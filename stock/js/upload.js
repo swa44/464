@@ -137,18 +137,30 @@ async function uploadToDatabase() {
     const totalBatches = Math.ceil(productsToInsert.length / batchSize);
     let uploadedCount = 0;
 
+    // 1. 기존 데이터 전체 삭제
+    progressText.textContent = "기존 데이터 삭제 중...";
+
+    // 안전을 위해 id가 0보다 큰 모든 행 삭제 (전체 삭제 트릭)
+    const { error: deleteError } = await supabaseClient
+      .from("products")
+      .delete()
+      .gte("id", 0);
+
+    if (deleteError) {
+      throw new Error("기존 데이터 삭제 실패: " + deleteError.message);
+    }
+
+    console.log("기존 데이터 삭제 완료");
+
     for (let i = 0; i < totalBatches; i++) {
       const start = i * batchSize;
       const end = Math.min(start + batchSize, productsToInsert.length);
       const batch = productsToInsert.slice(start, end);
 
-      // Supabase에 upsert (중복 시 업데이트)
+      // Supabase에 insert (전체 교체)
       const { data, error } = await supabaseClient
         .from("products")
-        .upsert(batch, {
-          onConflict: "code",
-          ignoreDuplicates: false,
-        });
+        .insert(batch);
 
       if (error) {
         throw error;
