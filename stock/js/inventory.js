@@ -89,10 +89,11 @@ function displayProducts(products, query) {
             <div class="quantity-input">
                 <label for="qty-${product.id}">수량:</label>
                 <input 
-                    type="number" 
+                    type="text" 
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     id="qty-${product.id}" 
                     value="${product.quantity || 0}" 
-                    min="0"
                     data-product-id="${product.id}"
                     data-product-code="${product.code}"
                 >
@@ -119,10 +120,29 @@ function highlightMatch(text, query) {
 
 // 수량 입력 이벤트 리스너
 function attachQuantityListeners() {
-  const quantityInputs = document.querySelectorAll('input[type="number"]');
+  const quantityInputs = document.querySelectorAll("input[data-product-id]");
 
   quantityInputs.forEach((input) => {
+    // 포커스 시: 0이면 빈칸으로
+    input.addEventListener("focus", (e) => {
+      if (e.target.value === "0") {
+        e.target.value = "";
+      }
+      e.target.select(); // 전체 선택
+    });
+
+    // 블러 시: 빈칸이면 0으로 복원
+    input.addEventListener("blur", (e) => {
+      if (e.target.value === "" || e.target.value === null) {
+        e.target.value = "0";
+      }
+    });
+
+    // 입력 시: 숫자만 허용
     input.addEventListener("input", (e) => {
+      // 숫자가 아닌 문자 제거
+      e.target.value = e.target.value.replace(/[^0-9]/g, "");
+
       const productId = e.target.dataset.productId;
       const newQuantity = parseInt(e.target.value) || 0;
 
