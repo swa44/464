@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>재고조사 - 수량 입력</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>📦 재고조사 시스템</h1>
+        <nav>
+          <a href="index.html">CSV 업로드</a>
+          <a href="inventory.html" class="active">재고조사</a>
+          <a href="download.html">CSV 다운로드</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card">
+        <h2>재고 수량 입력</h2>
+        <p class="text-muted mb-2">제품명을 검색하여 재고 수량을 입력하세요.</p>
+
+        <!-- 검색 박스 -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="제품명 또는 제품번호로 검색..."
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- 검색 결과 상태 -->
+        <div id="searchStatus" class="text-muted text-center mb-2"></div>
+
+        <!-- 로딩 스피너 -->
+        <div id="loadingSpinner" class="hidden">
+          <div class="spinner"></div>
+        </div>
+
+        <!-- 제품 목록 -->
+        <div id="productList" class="product-list"></div>
+
+        <!-- 빈 상태 메시지 -->
+        <div
+          id="emptyState"
+          class="text-center text-muted mt-3"
+          style="padding: 40px"
+        >
+          <div style="font-size: 3rem; margin-bottom: 16px">📦</div>
+          <h3>제품을 검색하세요</h3>
+          <p>위 검색창에 제품명을 입력하면 결과가 표시됩니다.</p>
+        </div>
+
+        <!-- 알림 영역 -->
+        <div id="notification" class="hidden mt-2"></div>
+      </div>
+
+      <!-- 단축키 안내 -->
+      <div class="card">
+        <h3>💡 사용 팁</h3>
+        <ul style="padding-left: 20px; color: var(--text-secondary)">
+          <li>제품명 일부만 입력해도 검색됩니다</li>
+          <li>수량 입력 후 자동으로 저장됩니다</li>
+          <li>여러 명이 동시에 작업할 수 있습니다</li>
+          <li>모바일에서도 쉽게 사용할 수 있습니다</li>
+        </ul>
+      </div>
+    </main>
+
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Config - Inline -->
+    <script>
+      const SUPABASE_URL = "https://rgfvubjdjyuitprsagkx.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnZnZ1Ympkanl1aXRwcnNhZ2t4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2NDEzODEsImV4cCI6MjA4NDIxNzM4MX0.yNmb9v4ncLlOaMZ52-yu9EJ3CLV0yI_AGE_m0fX3SOk";
+      const supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+    </script>
+    <!-- Inventory Logic -->
+    <script src="js/inventory.js"></script>
+  </body>
+</html>
