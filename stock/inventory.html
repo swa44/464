@@ -37,6 +37,35 @@
         <!-- 검색 결과 상태 -->
         <div id="searchStatus" class="text-muted text-center mb-2"></div>
 
+        <!-- 페이지네이션 -->
+        <div
+          id="paginationTop"
+          class="hidden"
+          style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <button
+            id="prevPage"
+            class="btn btn-outline"
+            style="padding: 8px 16px"
+          >
+            ◀ 이전
+          </button>
+          <span id="pageInfo" style="font-weight: 600">-</span>
+          <button
+            id="nextPage"
+            class="btn btn-outline"
+            style="padding: 8px 16px"
+          >
+            다음 ▶
+          </button>
+        </div>
+
         <!-- 로딩 스피너 -->
         <div id="loadingSpinner" class="hidden">
           <div class="spinner"></div>

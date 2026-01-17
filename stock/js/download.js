@@ -121,7 +121,8 @@ async function downloadCSV() {
     let query = supabaseClient
       .from("products")
       .select("code, name, quantity")
-      .order("code", { ascending: true });
+      .order("code", { ascending: true })
+      .range(0, 9999); // 최대 10000개
 
     if (onlyWithQuantity) {
       query = query.gt("quantity", 0);

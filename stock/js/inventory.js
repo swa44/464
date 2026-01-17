@@ -10,7 +10,13 @@ const notification = document.getElementById("notification");
 
 // 디바운스 타이머
 let searchDebounceTimer = null;
-let updateDebounceTimers = {};
+const updateDebounceTimers = {};
+
+// 페이지네이션 상태
+let currentPage = 1;
+const itemsPerPage = 500;
+let totalItems = 0;
+let allProducts = []; // 전체 제품 캐시
 
 // 페이지 로드 시
 document.addEventListener("DOMContentLoaded", () => {
@@ -52,6 +58,12 @@ async function searchProducts(query) {
 
     // 결과 표시
     hideLoading();
+
+    // 전체 제품 저장 및 페이지 초기화
+    allProducts = data;
+    totalItems = data.length;
+    currentPage = 1;
+
     displayProducts(data, query);
   } catch (error) {
     console.error("검색 오류:", error);
@@ -61,8 +73,14 @@ async function searchProducts(query) {
 }
 
 // 제품 목록 표시
-function displayProducts(products, query) {
-  if (products.length === 0) {
+function displayProducts(products, query = "") {
+  // 페이지네이션 계산
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const pageProducts = products.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+
+  if (pageProducts.length === 0) {
     productList.innerHTML = "";
     emptyState.innerHTML = `
             <div style="font-size: 3rem; margin-bottom: 16px;">🔍</div>
@@ -71,14 +89,19 @@ function displayProducts(products, query) {
         `;
     emptyState.classList.remove("hidden");
     searchStatus.textContent = "";
+    updatePaginationUI(0, 0);
     return;
   }
 
   emptyState.classList.add("hidden");
-  searchStatus.textContent = `${products.length}개의 제품을 찾았습니다`;
+
+  // 상태 표시 업데이트
+  const displayStart = startIndex + 1;
+  const displayEnd = Math.min(endIndex, products.length);
+  searchStatus.textContent = `전체 ${products.length}개 제품 중 ${displayStart}-${displayEnd} 표시`;
 
   // 제품 목록 렌더링
-  productList.innerHTML = products
+  productList.innerHTML = pageProducts
     .map(
       (product) => `
         <div class="product-item" data-id="${product.id}">
@@ -102,6 +125,9 @@ function displayProducts(products, query) {
     `
     )
     .join("");
+
+  // 페이지네이션 UI 업데이트
+  updatePaginationUI(totalPages, products.length);
 
   // 수량 입력 이벤트 리스너 추가
   attachQuantityListeners();
@@ -225,7 +251,8 @@ async function loadInitialProducts() {
     const { data, error } = await supabaseClient
       .from("products")
       .select("*")
-      .order("code", { ascending: true });
+      .order("code", { ascending: true })
+      .range(0, 9999); // 최대 10000개
 
     if (error) {
       showNotification(
@@ -243,7 +270,11 @@ async function loadInitialProducts() {
       return;
     }
 
-    searchStatus.textContent = `전체 ${data.length}개 제품`;
+    // 전체 제품 저장 및 페이지 초기화
+    allProducts = data;
+    totalItems = data.length;
+    currentPage = 1;
+
     displayProducts(data);
   } catch (err) {
     hideLoading();
@@ -276,4 +307,40 @@ function showNotification(message, type = "info") {
   setTimeout(() => {
     notification.classList.add("hidden");
   }, 3000);
+}
+
+// 페이지네이션 UI 업데이트
+function updatePaginationUI(totalPages, totalItems) {
+  const paginationTop = document.getElementById("paginationTop");
+  const pageInfo = document.getElementById("pageInfo");
+  const prevBtn = document.getElementById("prevPage");
+  const nextBtn = document.getElementById("nextPage");
+
+  if (totalPages <= 1) {
+    paginationTop.classList.add("hidden");
+    return;
+  }
+
+  paginationTop.classList.remove("hidden");
+  pageInfo.textContent = `${currentPage} / ${totalPages} 페이지`;
+
+  // 이전 버튼
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.onclick = () => {
+    if (currentPage > 1) {
+      currentPage--;
+      displayProducts(allProducts);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  // 다음 버튼
+  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.onclick = () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      displayProducts(allProducts);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 }
