@@ -243,39 +243,54 @@ function hideLoading() {
   loadingSpinner.classList.add("hidden");
 }
 
-// 초기 제품 로드 (처음 50개)
+// 초기 제품 로드
 async function loadInitialProducts() {
   try {
     showLoading();
 
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select("*")
-      .order("code", { ascending: true })
-      .range(0, 9999); // 최대 10000개
+    let allData = [];
+    let hasMore = true;
+    let offset = 0;
+    const batchSize = 1000;
 
-    if (error) {
-      showNotification(
-        "제품 로드 중 오류가 발생했습니다: " + error.message,
-        "error"
-      );
-      hideLoading();
-      return;
+    // 배치로 전체 데이터 가져오기
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("*")
+        .order("code", { ascending: true })
+        .range(offset, offset + batchSize - 1);
+
+      if (error) throw error;
+
+      if (data.length > 0) {
+        allData = allData.concat(data);
+        offset += batchSize;
+
+        // 로딩 상태 업데이트 (선택사항)
+        if (offset > 1000) {
+          // 사용자에게 진행 상황을 알리고 싶다면 여기에...
+        }
+      }
+
+      if (data.length < batchSize) {
+        hasMore = false;
+      }
     }
 
     hideLoading();
 
-    if (data.length === 0) {
+    if (allData.length === 0) {
       showEmptyState();
       return;
     }
 
     // 전체 제품 저장 및 페이지 초기화
-    allProducts = data;
-    totalItems = data.length;
+    allProducts = allData;
+    totalItems = allData.length;
     currentPage = 1;
 
-    displayProducts(data);
+    displayProducts(allData);
   } catch (err) {
     hideLoading();
     showNotification("제품 로드 실패: " + err.message, "error");

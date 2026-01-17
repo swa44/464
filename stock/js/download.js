@@ -108,76 +108,6 @@ async function loadPreview() {
   }
 }
 
-// CSV 다운로드
-async function downloadCSV() {
-  try {
-    downloadBtn.disabled = true;
-    downloadBtn.innerHTML = "<span>⏳</span><span>다운로드 중...</span>";
-
-    // 필터 옵션 확인
-    const onlyWithQuantity = onlyWithQuantityCheckbox.checked;
-
-    // 데이터 조회
-    let query = supabaseClient
-      .from("products")
-      .select("code, name, quantity")
-      .order("code", { ascending: true })
-      .range(0, 9999); // 최대 10000개
-
-    if (onlyWithQuantity) {
-      query = query.gt("quantity", 0);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    if (data.length === 0) {
-      showNotification("다운로드할 데이터가 없습니다.", "error");
-      downloadBtn.disabled = false;
-      downloadBtn.innerHTML = "<span>⬇️</span><span>CSV 다운로드</span>";
-      return;
-    }
-
-    // CSV 변환
-    const csv = Papa.unparse(data, {
-      header: true,
-      columns: ["code", "name", "quantity"],
-    });
-
-    // 파일 다운로드
-    const blob = new Blob(["\uFEFF" + csv], {
-      type: "text/csv;charset=utf-8;",
-    }); // UTF-8 BOM 추가
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-
-    const now = new Date();
-    const fileName = `재고조사_${formatDateForFilename(now)}.csv`;
-
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showNotification(
-      `✅ ${data.length}개의 제품 데이터가 다운로드되었습니다!`,
-      "success"
-    );
-  } catch (error) {
-    console.error("다운로드 오류:", error);
-    showNotification(
-      "다운로드 중 오류가 발생했습니다: " + error.message,
-      "error"
-    );
-  } finally {
-    downloadBtn.disabled = false;
-    downloadBtn.innerHTML = "<span>⬇️</span><span>CSV 다운로드</span>";
-  }
-}
-
 // 날짜/시간 포맷팅
 function formatDateTime(dateString) {
   const date = new Date(dateString);
@@ -216,4 +146,94 @@ function showNotification(message, type = "info") {
   setTimeout(() => {
     notification.classList.add("hidden");
   }, 5000);
+}
+// CSV 다운로드 (배치 처리)
+async function downloadCSV() {
+  try {
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = "<span>⏳</span><span>다운로드 중...</span>";
+
+    // 필터 옵션 확인
+    const onlyWithQuantity = onlyWithQuantityCheckbox.checked;
+
+    // 전체 데이터를 담을 배열
+    let allData = [];
+    let hasMore = true;
+    let offset = 0;
+    const batchSize = 1000;
+
+    // 1000개씩 반복해서 가져오기
+    while (hasMore) {
+      let query = supabaseClient
+        .from("products")
+        .select("code, name, quantity")
+        .order("code", { ascending: true })
+        .range(offset, offset + batchSize - 1);
+
+      if (onlyWithQuantity) {
+        query = query.gt("quantity", 0);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data.length > 0) {
+        allData = allData.concat(data);
+        offset += batchSize;
+
+        // 진행 상황 표시
+        downloadBtn.innerHTML = `<span>⏳</span><span>${allData.length}개 로드 중...</span>`;
+      }
+
+      // 1000개 미만이면 마지막 페이지
+      if (data.length < batchSize) {
+        hasMore = false;
+      }
+    }
+
+    if (allData.length === 0) {
+      showNotification("다운로드할 데이터가 없습니다.", "error");
+      downloadBtn.disabled = false;
+      downloadBtn.innerHTML = "<span>⬇️</span><span>CSV 다운로드</span>";
+      return;
+    }
+
+    // CSV 변환
+    const csv = Papa.unparse(allData, {
+      header: true,
+      columns: ["code", "name", "quantity"],
+    });
+
+    // 파일 다운로드
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    }); // UTF-8 BOM 추가
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    const now = new Date();
+    const fileName = `재고조사_${formatDateForFilename(now)}.csv`;
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showNotification(
+      `✅ ${allData.length}개의 제품 데이터가 다운로드되었습니다!`,
+      "success"
+    );
+  } catch (error) {
+    console.error("다운로드 오류:", error);
+    showNotification(
+      "다운로드 중 오류가 발생했습니다: " + error.message,
+      "error"
+    );
+  } finally {
+    downloadBtn.disabled = false;
+    downloadBtn.innerHTML = "<span>⬇️</span><span>CSV 다운로드</span>";
+  }
 }
