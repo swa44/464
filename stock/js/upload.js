@@ -84,7 +84,7 @@ function parseCSV(file) {
 
       if (keys.length < 3) {
         showError(
-          "CSV 파일에 최소 3개의 열(제품번호, 제품명, 수량)이 필요합니다."
+          "CSV 파일에 최소 3개의 열(제품번호, 제품명, 수량)이 필요합니다.",
         );
         uploadBtn.disabled = true;
         return;
@@ -168,7 +168,7 @@ async function uploadToDatabase() {
 
       uploadedCount = end;
       const progress = Math.round(
-        (uploadedCount / productsToInsert.length) * 100
+        (uploadedCount / productsToInsert.length) * 100,
       );
       progressBar.style.width = progress + "%";
       progressText.textContent = `업로드 중... (${uploadedCount} / ${productsToInsert.length})`;
@@ -184,7 +184,7 @@ async function uploadToDatabase() {
     setTimeout(() => {
       uploadProgress.classList.add("hidden");
       showSuccess(
-        `✅ ${uploadedCount}개의 제품이 성공적으로 업로드되었습니다!`
+        `✅ ${uploadedCount}개의 제품이 성공적으로 업로드되었습니다!`,
       );
       uploadBtn.disabled = false;
     }, 1000);

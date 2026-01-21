@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -43,25 +43,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             margin-bottom: 16px;
+            flex-wrap: wrap;
           "
         >
-          <button
-            id="prevPage"
-            class="btn btn-outline"
-            style="padding: 8px 16px"
-          >
-            ◀ 이전
-          </button>
-          <span id="pageInfo" style="font-weight: 600">-</span>
-          <button
-            id="nextPage"
-            class="btn btn-outline"
-            style="padding: 8px 16px"
-          >
-            다음 ▶
-          </button>
+          <!-- Dynamically populated by JavaScript -->
         </div>
 
         <!-- 로딩 스피너 -->
@@ -101,16 +88,8 @@
 
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Config - Inline -->
-    <script>
-      const SUPABASE_URL = "https://rgfvubjdjyuitprsagkx.supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnZnZ1Ympkanl1aXRwcnNhZ2t4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2NDEzODEsImV4cCI6MjA4NDIxNzM4MX0.yNmb9v4ncLlOaMZ52-yu9EJ3CLV0yI_AGE_m0fX3SOk";
-      const supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-      );
-    </script>
+    <!-- Config -->
+    <script src="/stock/js/config.js"></script>
     <!-- Inventory Logic -->
     <script src="/stock/js/inventory.js"></script>
   </body>

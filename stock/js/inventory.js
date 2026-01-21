@@ -14,9 +14,11 @@ const updateDebounceTimers = {};
 
 // 페이지네이션 상태
 let currentPage = 1;
-const itemsPerPage = 500;
+const itemsPerPage = 50;
 let totalItems = 0;
 let allProducts = []; // 전체 제품 캐시
+let ecountStockMap = {}; // 이카운트 재고 캐시 (PROD_CD -> QTY)
+let isECountStockLoaded = false; // 이카운트 재고 로드 여부
 
 // 페이지 로드 시
 document.addEventListener("DOMContentLoaded", () => {
@@ -102,15 +104,28 @@ function displayProducts(products, query = "") {
 
   // 제품 목록 렌더링
   productList.innerHTML = pageProducts
-    .map(
-      (product) => `
+    .map((product) => {
+      // 전산재고 가져오기 (없으면 - 표시)
+      const ecountQty =
+        ecountStockMap[product.code] !== undefined
+          ? ecountStockMap[product.code]
+          : "-";
+      const ecountClass =
+        ecountStockMap[product.code] !== undefined
+          ? "text-primary"
+          : "text-muted";
+
+      return `
         <div class="product-item" data-id="${product.id}">
             <div class="product-info">
                 <h3>${highlightMatch(product.name, query)}</h3>
                 <div class="code">${product.code}</div>
+                <div class="ecount-stock" style="margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary);">
+                    전산재고: <span class="${ecountClass}" style="font-weight: 600;">${ecountQty}</span>개
+                </div>
             </div>
             <div class="quantity-input">
-                <label for="qty-${product.id}">수량:</label>
+                <label for="qty-${product.id}">실사수량:</label>
                 <input 
                     type="text" 
                     inputmode="numeric"
@@ -122,8 +137,8 @@ function displayProducts(products, query = "") {
                 >
             </div>
         </div>
-    `
-    )
+    `;
+    })
     .join("");
 
   // 페이지네이션 UI 업데이트
@@ -131,6 +146,64 @@ function displayProducts(products, query = "") {
 
   // 수량 입력 이벤트 리스너 추가
   attachQuantityListeners();
+
+  // 이카운트 재고가 아직 로드되지 않았다면 로드 시도
+  if (!isECountStockLoaded) {
+    fetchECountStock();
+  }
+}
+
+// 이카운트 재고 가져오기 (전체 로드)
+async function fetchECountStock() {
+  if (isECountStockLoaded) return;
+
+  try {
+    console.log("이카운트 재고 조회 시작...");
+    const { ZONE, SESSION_ID, WH_CD, API_URL_TEMPLATE } = ECOUNT_CONFIG;
+
+    // 오늘 날짜 (YYYYMMDD)
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+    const url = API_URL_TEMPLATE.replace("{ZONE}", ZONE).replace(
+      "{SESSION_ID}",
+      SESSION_ID,
+    );
+
+    const payload = {
+      PROD_CD: "", // 전체 품목 조회
+      WH_CD: WH_CD,
+      BASE_DATE: today,
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (result.Status !== "200" || !result.Data || !result.Data.Result) {
+      console.error("이카운트 API 오류:", result);
+      return;
+    }
+
+    // 재고 맵핑 (PROD_CD -> BAL_QTY)
+    result.Data.Result.forEach((item) => {
+      // BAL_QTY는 실수형 문자열일 수 있음 (예: "3.0000000000")
+      ecountStockMap[item.PROD_CD] = parseFloat(item.BAL_QTY);
+    });
+
+    isECountStockLoaded = true;
+    console.log(
+      `이카운트 재고 로드 완료: ${Object.keys(ecountStockMap).length}건`,
+    );
+
+    // 현재 화면 갱신 (전산재고 표시를 위해)
+    displayProducts(allProducts, searchInput.value.trim());
+  } catch (error) {
+    console.error("이카운트 재고 조회 실패:", error);
+  }
 }
 
 // 검색어 하이라이트
@@ -140,7 +213,7 @@ function highlightMatch(text, query) {
   const regex = new RegExp(`(${query})`, "gi");
   return text.replace(
     regex,
-    '<mark style="background: yellow; padding: 2px 4px; border-radius: 3px;">$1</mark>'
+    '<mark style="background: yellow; padding: 2px 4px; border-radius: 3px;">$1</mark>',
   );
 }
 
@@ -220,7 +293,7 @@ async function updateQuantity(productId, quantity) {
     console.error("수량 업데이트 오류:", error);
     showNotification(
       "수량 저장 중 오류가 발생했습니다: " + error.message,
-      "error"
+      "error",
     );
 
     // 에러 피드백
@@ -327,9 +400,6 @@ function showNotification(message, type = "info") {
 // 페이지네이션 UI 업데이트
 function updatePaginationUI(totalPages, totalItems) {
   const paginationTop = document.getElementById("paginationTop");
-  const pageInfo = document.getElementById("pageInfo");
-  const prevBtn = document.getElementById("prevPage");
-  const nextBtn = document.getElementById("nextPage");
 
   if (totalPages <= 1) {
     paginationTop.classList.add("hidden");
@@ -337,25 +407,76 @@ function updatePaginationUI(totalPages, totalItems) {
   }
 
   paginationTop.classList.remove("hidden");
-  pageInfo.textContent = `${currentPage} / ${totalPages} 페이지`;
 
-  // 이전 버튼
-  prevBtn.disabled = currentPage === 1;
-  prevBtn.onclick = () => {
-    if (currentPage > 1) {
-      currentPage--;
-      displayProducts(allProducts);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  // 페이지 번호 범위 계산 (최대 5개 표시)
+  const maxVisiblePages = 5;
 
-  // 다음 버튼
-  nextBtn.disabled = currentPage === totalPages;
-  nextBtn.onclick = () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      displayProducts(allProducts);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  // 현재 페이지가 속한 그룹 계산 (1-5, 6-10, 11-15, ...)
+  const currentGroup = Math.ceil(currentPage / maxVisiblePages);
+  let startPage = (currentGroup - 1) * maxVisiblePages + 1;
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  // 페이지네이션 HTML 생성 (2줄 구조)
+  let paginationHTML = `
+    <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: center;">
+      <!-- 첫 번째 줄: 페이지 번호들 -->
+      <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: nowrap;">
+  `;
+
+  // 페이지 번호 버튼들
+  for (let i = startPage; i <= endPage; i++) {
+    const isActive = i === currentPage;
+    paginationHTML += `
+      <button 
+        class="btn ${isActive ? "btn-primary" : "btn-outline"}" 
+        onclick="goToPage(${i})" 
+        style="padding: 6px 12px; min-width: 60px; min-height: 40px;font-size: 14px; font-weight: ${isActive ? "700" : "400"}; ${isActive ? "background: var(--primary); color: white;" : ""}"
+      >
+        ${i}
+      </button>
+    `;
+  }
+
+  paginationHTML += `
+      </div>
+      <!-- 두 번째 줄: 이전/다음 버튼 -->
+      <div style="display: flex; gap: 8px; justify-content: center;">
+  `;
+
+  // 이전 그룹으로 이동 (이전 그룹의 첫 페이지)
+  const prevGroupFirstPage = startPage - maxVisiblePages;
+  if (prevGroupFirstPage >= 1) {
+    paginationHTML += `
+      <button class="btn btn-outline" onclick="goToPage(${prevGroupFirstPage})" style="padding: 6px 12px; font-size: 14px;">
+        ◀◀ 이전
+      </button>
+    `;
+  }
+
+  // 다음 그룹으로 이동 (다음 그룹의 첫 페이지)
+  const nextGroupFirstPage = endPage + 1;
+  if (nextGroupFirstPage <= totalPages) {
+    paginationHTML += `
+      <button class="btn btn-outline" onclick="goToPage(${nextGroupFirstPage})" style="padding: 6px 12px; font-size: 14px;">
+        다음 ▶▶
+      </button>
+    `;
+  }
+
+  paginationHTML += `
+      </div>
+    </div>
+  `;
+
+  paginationTop.innerHTML = paginationHTML;
+}
+
+// 페이지 이동 함수
+function goToPage(page) {
+  if (page < 1 || page > Math.ceil(allProducts.length / itemsPerPage)) {
+    return;
+  }
+  currentPage = page;
+  displayProducts(allProducts, searchInput.value.trim());
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }

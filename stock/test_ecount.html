@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ECOUNT API Test</title>
+  </head>
+  <body>
+    <h2>ECOUNT API Test</h2>
+    <div id="result">Testing...</div>
+    <script>
+      async function testAPI() {
+        const ZONE = "AB";
+        const SESSION_ID =
+          "3630333437367c256561256230253935256563253838253938256564253939253934:AB-ET6v8Uq6DPa!a";
+        // Using current date 20260121
+        const BASE_DATE = "20260121";
+
+        const url = `https://sboapi${ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${SESSION_ID}`;
+
+        const payload = {
+          PROD_CD: "", // Get all? or "00016" as example? Leaving empty might return all
+          WH_CD: "", // All warehouses
+          BASE_DATE: BASE_DATE,
+        };
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await response.json();
+          document.getElementById("result").textContent = JSON.stringify(
+            data,
+            null,
+            2,
+          );
+          console.log(data);
+        } catch (error) {
+          document.getElementById("result").textContent =
+            "Error: " + error.toString();
+          console.error(error);
+        }
+      }
+      testAPI();
+    </script>
+  </body>
+</html>
