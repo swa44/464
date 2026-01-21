@@ -15,9 +15,5 @@ const PRODUCTS_TABLE = "products";
 // ECOUNT ERP 설정
 const ECOUNT_CONFIG = {
   ZONE: "AB",
-  SESSION_ID:
-    "3630333437367c256561256230253935256563253838253938256564253939253934:AB-ET6xs3U_9VJIT",
   WH_CD: "7777", // 조회할 창고 코드 (폴라베어창고)
-  API_URL_TEMPLATE:
-    "https://oapi{ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID={SESSION_ID}",
 };

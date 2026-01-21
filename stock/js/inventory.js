@@ -153,32 +153,23 @@ function displayProducts(products, query = "") {
   }
 }
 
-// 이카운트 재고 가져오기 (전체 로드)
+// 이카운트 재고 가져오기 (Vercel Serverless Function 이용)
 async function fetchECountStock() {
   if (isECountStockLoaded) return;
 
   try {
-    console.log("이카운트 재고 조회 시작...");
-    const { ZONE, SESSION_ID, WH_CD, API_URL_TEMPLATE } = ECOUNT_CONFIG;
+    console.log("이카운트 재고 조회 시작 (via Vercel Function)...");
 
-    // 오늘 날짜 (YYYYMMDD)
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-
-    const url = API_URL_TEMPLATE.replace("{ZONE}", ZONE).replace(
-      "{SESSION_ID}",
-      SESSION_ID,
-    );
-
-    const payload = {
-      PROD_CD: "", // 전체 품목 조회
-      WH_CD: WH_CD,
-      BASE_DATE: today,
-    };
-
-    const response = await fetch(url, {
+    // Vercel Serverless Function 호출 (/api/ecount)
+    // 서버가 1년짜리 인증키로 자동 로그인 후 데이터를 반환함
+    const response = await fetch("/api/ecount", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        // 필요한 파라미터만 전달 (서버가 알아서 처리)
+        WH_CD: "7777", // 기본값은 서버에도 있지만 명시적으로 전달 가능
+        PROD_CD: "",
+      }),
     });
 
     const result = await response.json();
@@ -190,7 +181,6 @@ async function fetchECountStock() {
 
     // 재고 맵핑 (PROD_CD -> BAL_QTY)
     result.Data.Result.forEach((item) => {
-      // BAL_QTY는 실수형 문자열일 수 있음 (예: "3.0000000000")
       ecountStockMap[item.PROD_CD] = parseFloat(item.BAL_QTY);
     });
 
@@ -199,7 +189,7 @@ async function fetchECountStock() {
       `이카운트 재고 로드 완료: ${Object.keys(ecountStockMap).length}건`,
     );
 
-    // 현재 화면 갱신 (전산재고 표시를 위해)
+    // 현재 화면 갱신
     displayProducts(allProducts, searchInput.value.trim());
   } catch (error) {
     console.error("이카운트 재고 조회 실패:", error);
