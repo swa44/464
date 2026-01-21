@@ -9,38 +9,66 @@
     <div id="result">Testing...</div>
     <script>
       async function testAPI() {
+        const COM_CODE = "603476";
+        const USER_ID = "강수화";
+        const API_KEY = "0a21ffd1440d5436cb58f4a3be5560c196";
         const ZONE = "AB";
-        const SESSION_ID = "0a21ffd1440d5436cb58f4a3be5560c196";
-        // Using current date 20260121
-        const BASE_DATE = "20260121";
 
-        const url = `https://sboapi${ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${SESSION_ID}`;
-
-        const payload = {
-          PROD_CD: "", // Get all? or "00016" as example? Leaving empty might return all
-          WH_CD: "", // All warehouses
-          BASE_DATE: BASE_DATE,
-        };
+        const LOGIN_URL = "https://login.ecount.com/OpenApi/Login";
+        const resultDiv = document.getElementById("result");
 
         try {
-          const response = await fetch(url, {
+          // 1. 로그인 (세션 발급)
+          resultDiv.textContent = "Logging in...";
+          const loginResponse = await fetch(LOGIN_URL, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              COM_CODE,
+              USER_ID,
+              API_KEY,
+              SESSION_ID: "",
+              ZONE,
+              LAN_TYPE: "ko-KR",
+            }),
+          });
+
+          const loginResult = await loginResponse.json();
+          console.log("Login Result:", loginResult);
+
+          if (
+            loginResult.Status !== "200" ||
+            !loginResult.Data ||
+            !loginResult.Data.SESSION_ID
+          ) {
+            throw new Error("Login Failed: " + JSON.stringify(loginResult));
+          }
+
+          const SESSION_ID = loginResult.Data.SESSION_ID;
+          resultDiv.textContent = `Login Success! Session ID: ${SESSION_ID}\nFetching Stock...`;
+
+          // 2. 재고 조회
+          const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+          const stockUrl = `https://sboapi${ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${SESSION_ID}`;
+
+          const payload = {
+            PROD_CD: "",
+            WH_CD: "7777",
+            BASE_DATE: today,
+          };
+
+          const stockResponse = await fetch(stockUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
-          const data = await response.json();
-          document.getElementById("result").textContent = JSON.stringify(
-            data,
-            null,
-            2,
-          );
-          console.log(data);
+          const stockResult = await stockResponse.json();
+          resultDiv.textContent +=
+            "\n\nStock Result:\n" + JSON.stringify(stockResult, null, 2);
+          console.log("Stock Result:", stockResult);
         } catch (error) {
-          document.getElementById("result").textContent =
-            "Error: " + error.toString();
+          resultDiv.textContent = "Error: " + error.toString();
           console.error(error);
         }
       }
