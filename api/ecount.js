@@ -49,6 +49,20 @@ export default async function handler(req, res) {
           loginRes.on("data", (c) => (data += c));
           loginRes.on("end", () => {
             try {
+              // Check if response is HTML (starts with <)
+              if (data.trim().startsWith("<")) {
+                console.error(
+                  "❌ ECOUNT returned HTML (Likely Error/Block):",
+                  data.substring(0, 200),
+                );
+                reject(
+                  new Error(
+                    "ECOUNT API returned HTML instead of JSON. (Server Error or Rate Limit)",
+                  ),
+                );
+                return;
+              }
+
               const result = JSON.parse(data);
               // Status can be "200" (string) or 200 (number)
               if (
@@ -70,7 +84,14 @@ export default async function handler(req, res) {
                 );
               }
             } catch (e) {
-              reject(new Error("Login Parse Error: " + e.message));
+              reject(
+                new Error(
+                  "Login Parse Error: " +
+                    e.message +
+                    " | Raw: " +
+                    data.substring(0, 100),
+                ),
+              );
             }
           });
         },
