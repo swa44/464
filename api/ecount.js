@@ -50,10 +50,24 @@ export default async function handler(req, res) {
           loginRes.on("end", () => {
             try {
               const result = JSON.parse(data);
-              if (result.Status === "200" && result.Data?.Datas?.SESSION_ID) {
+              // Status can be "200" (string) or 200 (number)
+              if (
+                String(result.Status) === "200" &&
+                result.Data &&
+                result.Data.Datas &&
+                result.Data.Datas.SESSION_ID
+              ) {
                 resolve(result.Data.Datas.SESSION_ID);
               } else {
-                reject(new Error("Login Failed: " + JSON.stringify(result)));
+                console.error(
+                  "❌ Login Validation Failed. Response:",
+                  JSON.stringify(result),
+                );
+                reject(
+                  new Error(
+                    "Login verification failed: " + JSON.stringify(result),
+                  ),
+                );
               }
             } catch (e) {
               reject(new Error("Login Parse Error: " + e.message));
