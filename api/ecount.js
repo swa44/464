@@ -66,16 +66,47 @@ export default async function handler(req, res) {
           res.on("data", (c) => (data += c));
           res.on("end", () => {
             try {
-              if (data.trim().startsWith("<"))
+              if (data.trim().startsWith("<")) {
+                console.error(
+                  "❌ [ECOUNT] HTML Response instead of JSON. Check URL or Server Status.",
+                );
                 return reject(new Error("ECOUNT Login HTML Response"));
+              }
               const result = JSON.parse(data);
               if (
                 String(result.Status) === "200" &&
                 result.Data?.Datas?.SESSION_ID
-              )
+              ) {
                 resolve(result.Data.Datas.SESSION_ID);
-              else reject(new Error("Login Failed: " + JSON.stringify(result)));
+              } else {
+                console.error(
+                  "❌ [ECOUNT] Login Failed Detailed Response:",
+                  JSON.stringify(result, null, 2),
+                );
+                // Show info about Config without revealing secrets
+                console.log("ℹ️ [ECOUNT] Current Config Check:", {
+                  COM_CODE: CONFIG.COM_CODE,
+                  USER_ID: CONFIG.USER_ID,
+                  API_CERT_KEY: CONFIG.API_CERT_KEY
+                    ? `PRESENT (Length: ${CONFIG.API_CERT_KEY.length})`
+                    : "MISSING",
+                  ZONE: CONFIG.ZONE,
+                  LAN_TYPE: CONFIG.LAN_TYPE,
+                });
+                reject(
+                  new Error(
+                    "Login Failed: " +
+                      (result.Data?.message || JSON.stringify(result)),
+                  ),
+                );
+              }
             } catch (e) {
+              console.error(
+                "❌ [ECOUNT] Parse Error:",
+                e.message,
+                "Raw Content:",
+                data.substring(0, 100),
+              );
               reject(e);
             }
           });
