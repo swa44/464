@@ -153,21 +153,30 @@ function displayProducts(products, query = "") {
   }
 }
 
+let isECountFetching = false; // 진행 중인 요청 방지
+let ecountLastFailTime = 0; // 에러 발생 시 30초 쿨다운
+
 // 이카운트 재고 가져오기 (Vercel Serverless Function 이용)
 async function fetchECountStock() {
-  if (isECountStockLoaded) return;
+  if (isECountStockLoaded || isECountFetching) return;
+
+  // 에러 발생 후 30초 동안은 재시도하지 않음 (서버 과부하 방지)
+  const now = Date.now();
+  if (now - ecountLastFailTime < 30000) {
+    console.log("이카운트 재조회 쿨다운 중...");
+    return;
+  }
+
+  isECountFetching = true;
 
   try {
     console.log("이카운트 재고 조회 시작 (via Vercel Function)...");
 
-    // Vercel Serverless Function 호출 (/api/ecount)
-    // 서버가 1년짜리 인증키로 자동 로그인 후 데이터를 반환함
     const response = await fetch("/api/ecount", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        // 필요한 파라미터만 전달 (서버가 알아서 처리)
-        WH_CD: "7777", // 기본값은 서버에도 있지만 명시적으로 전달 가능
+        WH_CD: "7777",
         PROD_CD: "",
       }),
     });
@@ -176,6 +185,7 @@ async function fetchECountStock() {
 
     if (result.Status !== "200" || !result.Data || !result.Data.Result) {
       console.error("이카운트 API 오류:", result);
+      ecountLastFailTime = Date.now(); // 실패 시간 기록
       return;
     }
 
@@ -193,6 +203,9 @@ async function fetchECountStock() {
     displayProducts(allProducts, searchInput.value.trim());
   } catch (error) {
     console.error("이카운트 재고 조회 실패:", error);
+    ecountLastFailTime = Date.now(); // 실패 시간 기록
+  } finally {
+    isECountFetching = false;
   }
 }
 
