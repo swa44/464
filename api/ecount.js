@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     );
     return new Promise((resolve, reject) => {
       const zoneReq = https.request(
-        "https://login.ecount.com/Common/Api/GetZone",
+        "https://oapi.ecount.com/OAPI/V2/Zone", // 최신 Zone API 엔드포인트
         { method: "POST", headers: { "Content-Type": "application/json" } },
         (res) => {
           let data = "";
@@ -62,18 +62,20 @@ export default async function handler(req, res) {
           res.on("end", () => {
             try {
               const result = JSON.parse(data);
+              // 이카운트 Zone API 응답 구조: result.Data.ZONE
               if (result.Status === "200" && result.Data?.ZONE) {
                 resolve(result.Data.ZONE);
               } else {
-                resolve(null);
+                console.warn("⚠️ [ECOUNT] Zone API Response:", data);
+                resolve(`ERROR_${result.Status || "UNKNOWN"}`);
               }
             } catch (e) {
-              resolve(null);
+              resolve("PARSE_ERROR");
             }
           });
         },
       );
-      zoneReq.on("error", () => resolve(null));
+      zoneReq.on("error", () => resolve("CONNECTION_ERROR"));
       zoneReq.write(JSON.stringify({ COM_CODE: CONFIG.COM_CODE }));
       zoneReq.end();
     });
