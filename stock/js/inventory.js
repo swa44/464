@@ -24,6 +24,9 @@ let isECountStockLoaded = false; // 이카운트 재고 로드 여부
 document.addEventListener("DOMContentLoaded", () => {
   // 초기 50개 제품 로드
   loadInitialProducts();
+
+  // 실시간 동기화 시작
+  subscribeToRealtime();
 });
 
 // 검색 입력 이벤트 (디바운싱)
@@ -207,6 +210,49 @@ async function fetchECountStock() {
   } finally {
     isECountFetching = false;
   }
+}
+
+// 실시간 동기화 (Supabase Realtime)
+function subscribeToRealtime() {
+  supabaseClient
+    .channel("products_realtime")
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "products" },
+      (payload) => {
+        const updatedProduct = payload.new;
+        console.log("실시간 업데이트 수신:", updatedProduct);
+
+        // 1. 캐시 데이터 업데이트 (allProducts)
+        const productIndex = allProducts.findIndex(
+          (p) => p.id === updatedProduct.id,
+        );
+        if (productIndex !== -1) {
+          allProducts[productIndex] = updatedProduct;
+        }
+
+        // 2. 현재 화면에 보이고 있다면 UI 즉시 업데이트
+        const input = document.getElementById(`qty-${updatedProduct.id}`);
+        if (input) {
+          // 현재 내가 입력 중인 필드가 아닐 때만 업데이트 (내 입력 방해 금지)
+          if (document.activeElement !== input) {
+            input.value = updatedProduct.quantity;
+            highlightRemoteUpdate(input);
+          }
+        }
+      },
+    )
+    .subscribe();
+}
+
+// 다른 사용자가 업데이트했을 때 강조 효과
+function highlightRemoteUpdate(element) {
+  element.style.backgroundColor = "#fff9c4"; // 연노랑
+  element.style.transition = "background-color 0.5s";
+
+  setTimeout(() => {
+    element.style.backgroundColor = "";
+  }, 2000);
 }
 
 // 검색어 하이라이트
