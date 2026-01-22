@@ -26,6 +26,31 @@ export default async function handler(req, res) {
   };
 
   /**
+   * Helper: Get Session from Cache (Supabase)
+   */
+  async function getCachedSession(supabase) {
+    if (!supabase) return null;
+    try {
+      const { data } = await supabase
+        .from("ecount_session")
+        .select("*")
+        .eq("id", 1)
+        .single();
+
+      if (data?.session_id && data.session_id !== "INIT") {
+        const age = new Date().getTime() - new Date(data.updated_at).getTime();
+        // ECOUNT session lasts ~1 hour. Use if < 50 mins.
+        if (age < 50 * 60 * 1000) {
+          return data.session_id;
+        }
+      }
+    } catch (e) {
+      console.error("⚠️ Cache read error:", e.message);
+    }
+    return null;
+  }
+
+  /**
    * Helper: Login to ECOUNT and return Session ID
    */
   async function loginToECount() {
@@ -73,7 +98,14 @@ export default async function handler(req, res) {
                 reject(new Error("Login failed: " + JSON.stringify(result)));
               }
             } catch (e) {
-              reject(new Error("Login Parse Error: " + e.message));
+              reject(
+                new Error(
+                  "Login Parse Error: " +
+                    e.message +
+                    " | Raw: " +
+                    data.substring(0, 100),
+                ),
+              );
             }
           });
         },
@@ -112,7 +144,6 @@ export default async function handler(req, res) {
           stockRes.on("end", () => {
             try {
               if (data.trim().startsWith("<")) {
-                // If HTML returned, treat as error
                 resolve({ Status: "500", Error: { Message: "HTML Response" } });
               } else {
                 resolve(JSON.parse(data));
@@ -135,35 +166,35 @@ export default async function handler(req, res) {
     if (supabaseUrl && supabaseKey)
       supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Try to get Cached Session
-    if (supabase) {
-      try {
-        const { data } = await supabase
-          .from("ecount_session")
-          .select("*")
-          .eq("id", 1)
-          .single();
-        if (data?.session_id && data.session_id !== "INIT") {
-          const age =
-            new Date().getTime() - new Date(data.updated_at).getTime();
-          if (age < 50 * 60 * 1000) {
-            sessionId = data.session_id;
-            console.log("✅ [Cache] Using Cached Session:", sessionId);
-          }
-        }
-      } catch (e) {
-        console.error("⚠️ Cache read error:", e.message);
-      }
-    }
+    // 1. Initial Cache Check
+    sessionId = await getCachedSession(supabase);
 
-    // 2. If no session, Login
+    // 2. Login Logic with Double-Check (Prevents Login Storm)
     if (!sessionId) {
-      sessionId = await loginToECount();
-      if (supabase) {
-        await supabase
-          .from("ecount_session")
-          .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+      console.log(
+        "⌛ [Vercel] No session. Waiting to prevent concurrent login storm...",
+      );
+      // Random jitter (0-800ms) to spread concurrent requests
+      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 800)));
+
+      // Double-check cache: Maybe another request already logged in while we waited
+      sessionId = await getCachedSession(supabase);
+
+      if (!sessionId) {
+        sessionId = await loginToECount();
+        if (supabase) {
+          console.log("💾 [Cache] Success. Saving new session to Supabase.");
+          await supabase
+            .from("ecount_session")
+            .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+        }
+      } else {
+        console.log(
+          "✅ [Cache] Re-checked and found session from another request.",
+        );
       }
+    } else {
+      console.log("✅ [Cache] Found valid session.");
     }
 
     // 3. Fetch Stock
@@ -172,22 +203,24 @@ export default async function handler(req, res) {
     // 4. RETRY LOGIC: If Session Invalid/Error -> Force Login -> Retry
     if (String(stockResult.Status) !== "200") {
       console.warn(
-        "⚠️ [Vercel] Stock fetch failed (Invalid Session?). Retrying with fresh login...",
-        stockResult,
+        "⚠️ [Vercel] Stock fetch failed. Retrying with fresh login...",
       );
 
-      // Login again
-      sessionId = await loginToECount();
+      // Wait a bit before retry to avoid spamming the lock
+      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 500)));
 
-      // Update Cache
-      if (supabase) {
-        console.log("💾 [Cache] Updating Supabase with fresh session...");
-        await supabase
-          .from("ecount_session")
-          .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+      // Check if someone else already refreshed it
+      sessionId = await getCachedSession(supabase);
+
+      if (!sessionId) {
+        sessionId = await loginToECount();
+        if (supabase) {
+          await supabase
+            .from("ecount_session")
+            .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+        }
       }
 
-      // Retry Fetch
       stockResult = await fetchStock(sessionId);
     }
 
