@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     COM_CODE: "603476",
     USER_ID: "KANGSOOHWA", // 영문 ID로 변경
     API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6", // 신규 키 적용
-    ZONE: "AB",
+    ZONE: "AB", // 대문자로 복구 (ec_req_sid=AB... 확인됨)
     LAN_TYPE: "ko-KR",
     WH_CD: "7777",
     STOCK_CACHE_SEC: 30,
@@ -94,7 +94,10 @@ export default async function handler(req, res) {
                   ZONE: CONFIG.ZONE,
                   LAN_TYPE: CONFIG.LAN_TYPE,
                 });
-                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE}, KEY_LEN=${CONFIG.API_CERT_KEY?.length})`;
+                const keyHint = CONFIG.API_CERT_KEY
+                  ? `${CONFIG.API_CERT_KEY.substring(0, 4)}...${CONFIG.API_CERT_KEY.slice(-4)}`
+                  : "None";
+                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE}, KEY=${keyHint}, LEN=${CONFIG.API_CERT_KEY?.length})`;
                 reject(
                   new Error(
                     "Login Failed: " +
