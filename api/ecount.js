@@ -17,9 +17,9 @@ export default async function handler(req, res) {
 
   const CONFIG = {
     COM_CODE: "603476",
-    USER_ID: "강수화",
-    API_CERT_KEY: "2f049a1457c9d4d3cb4ba825e526a4c743",
-    ZONE: "ab", // 소문자로 변경 시도
+    USER_ID: "KANGSOOHWA", // 영문 ID로 변경
+    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6", // 신규 키 적용
+    ZONE: "AB",
     LAN_TYPE: "ko-KR",
     WH_CD: "7777",
     STOCK_CACHE_SEC: 30,
