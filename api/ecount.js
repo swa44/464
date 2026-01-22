@@ -17,15 +17,15 @@ export default async function handler(req, res) {
 
   const CONFIG = {
     COM_CODE: "603476".trim(),
-    USER_ID: "KANGSOOHWA".trim(), // 영문 ID로 변경
+    USER_ID: "KANGSOOHWA".trim(), // 영문 ID
     API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6".replace(
       /[^a-zA-Z0-9]/g,
       "",
     ), // 특수문자/공백 완벽 제거
-    ZONE: "AB".trim(), // 대문자로 복구 (ec_req_sid=AB... 확인됨)
+    ZONE: "AB".trim(), // 대문자 AB
     LAN_TYPE: "ko-KR",
     WH_CD: "7777".trim(),
-    STOCK_CACHE_SEC: 30,
+    STOCK_CACHE_SEC: 30, // 30 second stock cache
   };
 
   // Revert to OAPI (Production Environment)
