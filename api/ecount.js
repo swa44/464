@@ -16,12 +16,12 @@ export default async function handler(req, res) {
   }
 
   const CONFIG = {
-    COM_CODE: "603476",
-    USER_ID: "KANGSOOHWA", // 영문 ID로 변경
-    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6", // 신규 키 적용
-    ZONE: "AB", // 대문자로 복구 (ec_req_sid=AB... 확인됨)
+    COM_CODE: "603476".trim(),
+    USER_ID: "KANGSOOHWA".trim(), // 영문 ID로 변경
+    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6".trim(), // 신규 키 적용
+    ZONE: "AB".trim(), // 대문자로 복구 (ec_req_sid=AB... 확인됨)
     LAN_TYPE: "ko-KR",
-    WH_CD: "7777",
+    WH_CD: "7777".trim(),
     STOCK_CACHE_SEC: 30,
   };
 
@@ -62,14 +62,19 @@ export default async function handler(req, res) {
           res.on("end", () => {
             try {
               const result = JSON.parse(data);
-              if (result.Status === "200") {
+              const status = String(result.Status);
+              if (status === "200") {
+                // ECOUNT V2 Zone API can return result.Data as a string "AB" or an object { ZONE: "AB" }
+                const zoneValue =
+                  typeof result.Data === "string"
+                    ? result.Data
+                    : result.Data?.ZONE;
                 resolve(
-                  result.Data?.ZONE ||
-                    `NO_ZONE_FIELD:${JSON.stringify(result.Data)}`,
+                  zoneValue || `NO_ZONE_FIELD:${JSON.stringify(result.Data)}`,
                 );
               } else {
                 resolve(
-                  `API_ERROR_STATUS_${result.Status}: ${JSON.stringify(result.Errors || result.Error)}`,
+                  `API_ERROR_STATUS_${status}: ${JSON.stringify(result.Errors || result.Error || result)}`,
                 );
               }
             } catch (e) {
