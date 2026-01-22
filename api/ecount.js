@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     );
     return new Promise((resolve, reject) => {
       const zoneReq = https.request(
-        "https://oapi.ecount.com/OAPI/V2/Zone", // 최신 Zone API 엔드포인트
+        "https://sboapi.ecount.com/OAPI/V2/Zone", // SBOAPI Zone Endpoint
         { method: "POST", headers: { "Content-Type": "application/json" } },
         (res) => {
           let data = "";
