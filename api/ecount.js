@@ -16,12 +16,12 @@ export default async function handler(req, res) {
   }
 
   const CONFIG = {
-    COM_CODE: "603476",
-    USER_ID: "강수화",
-    API_CERT_KEY: "2f049a1457c9d4d3cb4ba825e526a4c743",
-    ZONE: "AB",
-    LAN_TYPE: "ko",
-    WH_CD: "7777",
+    COM_CODE: "603476".trim(),
+    USER_ID: "강수화".trim(),
+    API_CERT_KEY: "2f049a1457c9d4d3cb4ba825e526a4c743".trim(),
+    ZONE: "AB".trim(),
+    LAN_TYPE: "ko-KR", // 원복 테스트
+    WH_CD: "7777".trim(),
     STOCK_CACHE_SEC: 30, // 30 second stock cache
   };
 
