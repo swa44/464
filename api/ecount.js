@@ -28,7 +28,8 @@ export default async function handler(req, res) {
     STOCK_CACHE_SEC: 30,
   };
 
-  const LOGIN_URL = `https://sboapi${CONFIG.ZONE}.ecount.com/OAPI/V2/OAPILogin`;
+  // Revert to OAPI (Production Environment)
+  const LOGIN_URL = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/OAPILogin`;
 
   /**
    * Helper: Get Cached Session & Stock from Supabase
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
     );
     return new Promise((resolve, reject) => {
       const zoneReq = https.request(
-        "https://sboapi.ecount.com/OAPI/V2/Zone", // SBOAPI Zone Endpoint
+        "https://oapi.ecount.com/OAPI/V2/Zone", // OAPI Zone Endpoint
         { method: "POST", headers: { "Content-Type": "application/json" } },
         (res) => {
           let data = "";
@@ -193,7 +194,7 @@ export default async function handler(req, res) {
    * Helper: Fetch Stock from ECOUNT
    */
   async function fetchStockFromECount(sessionId) {
-    const targetUrl = `https://sboapi${CONFIG.ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
+    const targetUrl = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
     const { PROD_CD } = req.body || {};
     const payload = JSON.stringify({
       PROD_CD: PROD_CD || "",
