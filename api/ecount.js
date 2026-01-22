@@ -62,15 +62,18 @@ export default async function handler(req, res) {
           res.on("end", () => {
             try {
               const result = JSON.parse(data);
-              // 이카운트 Zone API 응답 구조: result.Data.ZONE
-              if (result.Status === "200" && result.Data?.ZONE) {
-                resolve(result.Data.ZONE);
+              if (result.Status === "200") {
+                resolve(
+                  result.Data?.ZONE ||
+                    `NO_ZONE_FIELD:${JSON.stringify(result.Data)}`,
+                );
               } else {
-                console.warn("⚠️ [ECOUNT] Zone API Response:", data);
-                resolve(`ERROR_${result.Status || "UNKNOWN"}`);
+                resolve(
+                  `API_ERROR_STATUS_${result.Status}: ${JSON.stringify(result.Errors || result.Error)}`,
+                );
               }
             } catch (e) {
-              resolve("PARSE_ERROR");
+              resolve(`PARSE_ERROR: ${data.substring(0, 100)}`);
             }
           });
         },
@@ -138,14 +141,26 @@ export default async function handler(req, res) {
                   detectedZone === CONFIG.ZONE
                     ? "MATCH"
                     : `MISMATCH (Detected: ${detectedZone})`;
-                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE} [${zoneMatch}], KEY=${keyHint}, LEN=${CONFIG.API_CERT_KEY?.length})`;
+
+                // Construct a more descriptive error object
+                const errorData = {
+                  message:
+                    result.Data?.message ||
+                    result.Error?.Message ||
+                    "Unknown ECount Error",
+                  raw_status: result.Status,
+                  diagnostic: {
+                    id: CONFIG.USER_ID,
+                    com: CONFIG.COM_CODE,
+                    zone: `${CONFIG.ZONE} [${zoneMatch}]`,
+                    key_hint: keyHint,
+                    key_len: CONFIG.API_CERT_KEY?.length,
+                  },
+                  raw_response: result,
+                };
+
                 reject(
-                  new Error(
-                    "Login Failed: " +
-                      (result.Data?.message || JSON.stringify(result)) +
-                      " " +
-                      debugInfo,
-                  ),
+                  new Error(`LOGIN_FAIL_DETAIL: ${JSON.stringify(errorData)}`),
                 );
               }
             } catch (e) {
