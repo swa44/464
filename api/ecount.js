@@ -16,15 +16,16 @@ export default async function handler(req, res) {
   }
 
   const CONFIG = {
-    LOGIN_URL: "https://oapiAB.ecount.com/OAPI/V2/OAPILogin",
     COM_CODE: "603476",
     USER_ID: "강수화",
     API_CERT_KEY: "0a21ffd1440d5436cb58f4a3be5560c196",
     ZONE: "AB",
-    LAN_TYPE: "ko-KR",
+    LAN_TYPE: "ko",
     WH_CD: "7777",
     STOCK_CACHE_SEC: 30, // 30 second stock cache
   };
+
+  const LOGIN_URL = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/OAPILogin`;
 
   /**
    * Helper: Get Cached Session & Stock from Supabase
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
 
     return new Promise((resolve, reject) => {
       const loginReq = https.request(
-        CONFIG.LOGIN_URL,
+        LOGIN_URL,
         { method: "POST", headers: { "Content-Type": "application/json" } },
         (res) => {
           let data = "";
@@ -93,10 +94,13 @@ export default async function handler(req, res) {
                   ZONE: CONFIG.ZONE,
                   LAN_TYPE: CONFIG.LAN_TYPE,
                 });
+                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE}, KEY_LEN=${CONFIG.API_CERT_KEY?.length})`;
                 reject(
                   new Error(
                     "Login Failed: " +
-                      (result.Data?.message || JSON.stringify(result)),
+                      (result.Data?.message || JSON.stringify(result)) +
+                      " " +
+                      debugInfo,
                   ),
                 );
               }
@@ -238,6 +242,10 @@ export default async function handler(req, res) {
     return res.status(200).json(stockResult);
   } catch (error) {
     console.error("❌ [Vercel] Fatal Error:", error.message);
-    res.status(500).json({ error: error.message });
+    // Ensure the message and any additional data is sent back
+    res.status(500).json({
+      error: error.message,
+      details: error.stack?.split("\n")[0], // Optional: include first line of stack for more context
+    });
   }
 }
