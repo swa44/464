@@ -46,6 +46,38 @@ export default async function handler(req, res) {
   }
 
   /**
+   * Helper: Get Zone from ECOUNT (Diagnostic)
+   */
+  async function getZoneFromECount() {
+    console.log(`🔍 [ECOUNT] Detecting Zone for COM_CODE: ${CONFIG.COM_CODE}...`);
+    return new Promise((resolve, reject) => {
+      const zoneReq = https.request(
+        "https://login.ecount.com/Common/Api/GetZone",
+        { method: "POST", headers: { "Content-Type": "application/json" } },
+        (res) => {
+          let data = "";
+          res.on("data", (c) => (data += c));
+          res.on("end", () => {
+            try {
+              const result = JSON.parse(data);
+              if (result.Status === "200" && result.Data?.ZONE) {
+                resolve(result.Data.ZONE);
+              } else {
+                resolve(null);
+              }
+            } catch (e) {
+              resolve(null);
+            }
+          });
+        }
+      );
+      zoneReq.on("error", () => resolve(null));
+      zoneReq.write(JSON.stringify({ COM_CODE: CONFIG.COM_CODE }));
+      zoneReq.end();
+    });
+  }
+
+  /**
    * Helper: Login to ECOUNT
    */
   async function loginToECount() {
@@ -94,16 +126,14 @@ export default async function handler(req, res) {
                   ZONE: CONFIG.ZONE,
                   LAN_TYPE: CONFIG.LAN_TYPE,
                 });
-                const keyHint = CONFIG.API_CERT_KEY
-                  ? `${CONFIG.API_CERT_KEY.substring(0, 4)}...${CONFIG.API_CERT_KEY.slice(-4)}`
-                  : "None";
-                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE}, KEY=${keyHint}, LEN=${CONFIG.API_CERT_KEY?.length})`;
+                const keyHint = CONFIG.API_CERT_KEY ? `${CONFIG.API_CERT_KEY.substring(0, 4)}...${CONFIG.API_CERT_KEY.slice(-4)}` : "None";
+                const detectedZone = await getZoneFromECount();
+                const zoneMatch = detectedZone === CONFIG.ZONE ? "MATCH" : `MISMATCH (Detected: ${detectedZone})`;
+                const debugInfo = `(설정확인: ID=${CONFIG.USER_ID}, COM=${CONFIG.COM_CODE}, ZONE=${CONFIG.ZONE} [${zoneMatch}], KEY=${keyHint}, LEN=${CONFIG.API_CERT_KEY?.length})`;
                 reject(
                   new Error(
                     "Login Failed: " +
-                      (result.Data?.message || JSON.stringify(result)) +
-                      " " +
-                      debugInfo,
+                      (result.Data?.message || JSON.stringify(result)) + " " + debugInfo,
                   ),
                 );
               }
