@@ -52,46 +52,6 @@ export default async function handler(req, res) {
   /**
    * Helper: Get Zone from ECOUNT (Diagnostic)
    */
-  async function getZoneFromECount() {
-    console.log(
-      `🔍 [ECOUNT] Detecting Zone for COM_CODE: ${CONFIG.COM_CODE}...`,
-    );
-    return new Promise((resolve, reject) => {
-      const zoneReq = https.request(
-        "https://oapi.ecount.com/OAPI/V2/Zone", // OAPI Zone Endpoint
-        { method: "POST", headers: { "Content-Type": "application/json" } },
-        (res) => {
-          let data = "";
-          res.on("data", (c) => (data += c));
-          res.on("end", () => {
-            try {
-              const result = JSON.parse(data);
-              const status = String(result.Status);
-              if (status === "200") {
-                // ECOUNT V2 Zone API can return result.Data as a string "AB" or an object { ZONE: "AB" }
-                const zoneValue =
-                  typeof result.Data === "string"
-                    ? result.Data
-                    : result.Data?.ZONE;
-                resolve(
-                  zoneValue || `NO_ZONE_FIELD:${JSON.stringify(result.Data)}`,
-                );
-              } else {
-                resolve(
-                  `API_ERROR_STATUS_${status}: ${JSON.stringify(result.Errors || result.Error || result)}`,
-                );
-              }
-            } catch (e) {
-              resolve(`PARSE_ERROR: ${data.substring(0, 100)}`);
-            }
-          });
-        },
-      );
-      zoneReq.on("error", () => resolve("CONNECTION_ERROR"));
-      zoneReq.write(JSON.stringify({ COM_CODE: CONFIG.COM_CODE }));
-      zoneReq.end();
-    });
-  }
 
   /**
    * Helper: Login to ECOUNT
@@ -145,11 +105,6 @@ export default async function handler(req, res) {
                 const keyHint = CONFIG.API_CERT_KEY
                   ? `${CONFIG.API_CERT_KEY.substring(0, 4)}...${CONFIG.API_CERT_KEY.slice(-4)}`
                   : "None";
-                const detectedZone = await getZoneFromECount();
-                const zoneMatch =
-                  detectedZone === CONFIG.ZONE
-                    ? "MATCH"
-                    : `MISMATCH (Detected: ${detectedZone})`;
 
                 // Construct a more descriptive error object
                 const errorData = {
@@ -161,7 +116,7 @@ export default async function handler(req, res) {
                   diagnostic: {
                     id: CONFIG.USER_ID,
                     com: CONFIG.COM_CODE,
-                    zone: `${CONFIG.ZONE} [${zoneMatch}]`,
+                    expect_zone: CONFIG.ZONE,
                     key_hint: keyHint,
                     key_len: CONFIG.API_CERT_KEY?.length,
                   },
