@@ -18,7 +18,10 @@ export default async function handler(req, res) {
   const CONFIG = {
     COM_CODE: "603476".trim(),
     USER_ID: "KANGSOOHWA".trim(), // 영문 ID로 변경
-    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6".trim(), // 신규 키 적용
+    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6".replace(
+      /[^a-zA-Z0-9]/g,
+      "",
+    ), // 특수문자/공백 완벽 제거
     ZONE: "AB".trim(), // 대문자로 복구 (ec_req_sid=AB... 확인됨)
     LAN_TYPE: "ko-KR",
     WH_CD: "7777".trim(),
