@@ -25,9 +25,47 @@ document.addEventListener("DOMContentLoaded", () => {
   // 초기 50개 제품 로드
   loadInitialProducts();
 
+  // 통계 로드
+  loadStatistics();
+
   // 실시간 동기화 시작
   subscribeToRealtime();
 });
+
+// 실시간 통계 로드
+async function loadStatistics() {
+  try {
+    // 1. 전체 제품 수 (exact count)
+    const { count: total, error: e1 } = await supabaseClient
+      .from("products")
+      .select("*", { count: "exact", head: true });
+
+    if (e1) throw e1;
+
+    // 2. 입력 완료 수 (quantity > 0)
+    const { count: counted, error: e2 } = await supabaseClient
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .gt("quantity", 0);
+
+    if (e2) throw e2;
+
+    // 3. UI 업데이트
+    const totalEl = document.getElementById("statTotalCount");
+    const countedEl = document.getElementById("statCountedCount");
+    const progressEl = document.getElementById("statProgressPercent");
+
+    if (totalEl) totalEl.textContent = total.toLocaleString();
+    if (countedEl) countedEl.textContent = counted.toLocaleString();
+
+    if (progressEl) {
+      const percent = total > 0 ? Math.round((counted / total) * 100) : 0;
+      progressEl.textContent = percent;
+    }
+  } catch (error) {
+    console.error("통계 로드 실패:", error);
+  }
+}
 
 // 검색 입력 이벤트 (디바운싱)
 searchInput.addEventListener("input", (e) => {
@@ -238,6 +276,7 @@ function subscribeToRealtime() {
           if (document.activeElement !== input) {
             input.value = updatedProduct.quantity;
             highlightRemoteUpdate(input);
+            loadStatistics(); // 통계 업데이트
           }
         }
       },
@@ -338,6 +377,7 @@ async function updateQuantity(productId, quantity) {
     }
 
     console.log("수량 업데이트 성공:", productId, quantity);
+    loadStatistics(); // 통계 업데이트
   } catch (error) {
     console.error("수량 업데이트 오류:", error);
     showNotification(

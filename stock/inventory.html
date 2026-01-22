@@ -10,8 +10,36 @@
     <header>
       <div class="container">
         <h1>📦 재고조사 시스템</h1>
-        <nav>
-          <a href="/stock/inventory.html" class="active">재고조사</a>
+        <nav
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+          "
+        >
+          <div style="display: flex; gap: 20px">
+            <a href="/stock/inventory.html" class="active">재고조사</a>
+          </div>
+          <!-- 실시간 실적 통계 -->
+          <div
+            id="headerStats"
+            class="stats-mini"
+            style="
+              display: flex;
+              gap: 15px;
+              background: rgba(255, 255, 255, 0.1);
+              padding: 5px 15px;
+              border-radius: 20px;
+              font-size: 0.9rem;
+            "
+          >
+            <div title="전체 제품">📄 <span id="statTotalCount">-</span></div>
+            <div title="입력 완료">✅ <span id="statCountedCount">-</span></div>
+            <div title="진행률" style="font-weight: bold; color: #ffd700">
+              📊 <span id="statProgressPercent">-</span>%
+            </div>
+          </div>
         </nav>
       </div>
     </header>
