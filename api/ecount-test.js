@@ -10,152 +10,49 @@ export default async function handler(req, res) {
     return;
   }
 
-  const CONFIG = {
-    COM_CODE: "603476",
-    USER_ID: "KANGSOOHWA",
-    API_CERT_KEY: "5bf7bd16a7bf24b83b71f363d060e7fd66",
-    ZONE_UPPER: "AB", // 대문자
-    ZONE_LOWER: "ab", // 소문자
-    LAN_TYPE: "ko-KR",
-  };
+  // POST body에서 값을 받음
+  const {
+    COM_CODE = "603476",
+    USER_ID = "KANGSOOHWA",
+    API_CERT_KEY = "5bf7bd16a7bf24b83b71f363d060e7fd66",
+    ZONE = "ab",
+    LAN_TYPE = "ko-KR",
+  } = req.body || {};
 
-  const results = {
-    timestamp: new Date().toISOString(),
-    tests: [],
-  };
-
-  // ============================================
-  // 테스트 1: 로그인 (ZONE 대문자 "AB")
-  // ============================================
   console.log("\n========================================");
-  console.log("테스트 1: 로그인 (ZONE 대문자 AB)");
+  console.log("받은 파라미터:");
   console.log("========================================");
+  console.log("COM_CODE:", COM_CODE);
+  console.log("USER_ID:", USER_ID);
+  console.log("API_CERT_KEY:", API_CERT_KEY);
+  console.log("ZONE:", ZONE);
+  console.log("LAN_TYPE:", LAN_TYPE);
 
   try {
-    const loginUpper = await testLogin(
-      CONFIG.COM_CODE,
-      CONFIG.USER_ID,
-      CONFIG.API_CERT_KEY,
-      CONFIG.LAN_TYPE,
-      CONFIG.ZONE_UPPER,
+    const loginResult = await testLogin(
+      COM_CODE,
+      USER_ID,
+      API_CERT_KEY,
+      LAN_TYPE,
+      ZONE,
     );
-    results.tests.push({
-      name: "로그인 (ZONE: AB 대문자)",
+
+    console.log("✅ 로그인 성공!");
+    return res.status(200).json({
       success: true,
-      data: loginUpper.data,
+      session_id: loginResult.data.Data.Datas.SESSION_ID,
+      full_response: loginResult.data,
     });
-    console.log("✅ 로그인 성공 (대문자)");
   } catch (error) {
-    results.tests.push({
-      name: "로그인 (ZONE: AB 대문자)",
+    console.log("❌ 로그인 실패");
+    return res.status(200).json({
       success: false,
       error: error.message,
       response: error.response,
     });
-    console.log("❌ 로그인 실패 (대문자):", error.message);
   }
-
-  // ============================================
-  // 테스트 2: 로그인 (ZONE 소문자 "ab")
-  // ============================================
-  console.log("\n========================================");
-  console.log("테스트 2: 로그인 (ZONE 소문자 ab)");
-  console.log("========================================");
-
-  try {
-    const loginLower = await testLogin(
-      CONFIG.COM_CODE,
-      CONFIG.USER_ID,
-      CONFIG.API_CERT_KEY,
-      CONFIG.LAN_TYPE,
-      CONFIG.ZONE_LOWER,
-    );
-    results.tests.push({
-      name: "로그인 (ZONE: ab 소문자)",
-      success: true,
-      data: loginLower.data,
-    });
-    console.log("✅ 로그인 성공 (소문자)");
-  } catch (error) {
-    results.tests.push({
-      name: "로그인 (ZONE: ab 소문자)",
-      success: false,
-      error: error.message,
-      response: error.response,
-    });
-    console.log("❌ 로그인 실패 (소문자):", error.message);
-  }
-
-  // ============================================
-  // 테스트 3: USER_ID 소문자 시도
-  // ============================================
-  console.log("\n========================================");
-  console.log("테스트 3: USER_ID 소문자로 시도");
-  console.log("========================================");
-
-  try {
-    const loginLowerUserId = await testLogin(
-      CONFIG.COM_CODE,
-      CONFIG.USER_ID.toLowerCase(), // "kangsoohwa"
-      CONFIG.API_CERT_KEY,
-      CONFIG.LAN_TYPE,
-      CONFIG.ZONE_LOWER,
-    );
-    results.tests.push({
-      name: "로그인 (USER_ID 소문자)",
-      success: true,
-      data: loginLowerUserId.data,
-    });
-    console.log("✅ 로그인 성공 (USER_ID 소문자)");
-  } catch (error) {
-    results.tests.push({
-      name: "로그인 (USER_ID 소문자)",
-      success: false,
-      error: error.message,
-      response: error.response,
-    });
-    console.log("❌ 로그인 실패 (USER_ID 소문자):", error.message);
-  }
-
-  // ============================================
-  // 테스트 4: COM_CODE 앞에 0 추가 시도
-  // ============================================
-  console.log("\n========================================");
-  console.log("테스트 4: COM_CODE 앞에 0 추가");
-  console.log("========================================");
-
-  try {
-    const loginWithZero = await testLogin(
-      "0603476", // 앞에 0 추가
-      CONFIG.USER_ID,
-      CONFIG.API_CERT_KEY,
-      CONFIG.LAN_TYPE,
-      CONFIG.ZONE_LOWER,
-    );
-    results.tests.push({
-      name: "로그인 (COM_CODE: 0603476)",
-      success: true,
-      data: loginWithZero.data,
-    });
-    console.log("✅ 로그인 성공 (COM_CODE 0 추가)");
-  } catch (error) {
-    results.tests.push({
-      name: "로그인 (COM_CODE: 0603476)",
-      success: false,
-      error: error.message,
-      response: error.response,
-    });
-    console.log("❌ 로그인 실패 (COM_CODE 0 추가):", error.message);
-  }
-
-  console.log("\n========================================");
-  console.log("테스트 완료");
-  console.log("========================================\n");
-
-  return res.status(200).json(results);
 }
 
-// 로그인 테스트 함수
 function testLogin(comCode, userId, apiKey, lanType, zone) {
   return new Promise((resolve, reject) => {
     const loginUrl = `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`;
@@ -170,7 +67,7 @@ function testLogin(comCode, userId, apiKey, lanType, zone) {
 
     const payload = JSON.stringify(payloadObj);
 
-    console.log("📤 Login URL:", loginUrl);
+    console.log("\n📤 Login URL:", loginUrl);
     console.log("📤 Login Payload:", payload);
 
     const url = new URL(loginUrl);
@@ -185,8 +82,8 @@ function testLogin(comCode, userId, apiKey, lanType, zone) {
         let data = "";
         res.on("data", (c) => (data += c));
         res.on("end", () => {
-          console.log("📥 Login Response Status:", res.statusCode);
-          console.log("📥 Login Response Body:", data);
+          console.log("\n📥 Response Status:", res.statusCode);
+          console.log("📥 Response Body:", data);
           try {
             const result = JSON.parse(data);
             if (
