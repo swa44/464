@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import https from "https";
 
+// Initialize Supabase Client (Verify Env Vars existence in Vercel)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -15,62 +16,19 @@ export default async function handler(req, res) {
   }
 
   const CONFIG = {
+    LOGIN_URL: "https://oapiAB.ecount.com/OAPI/V2/OAPILogin",
     COM_CODE: "603476",
     USER_ID: "에이피아이",
     API_CERT_KEY: "403dc3191c92b42aabc59227e3fd15b167",
     ZONE: "AB",
     LAN_TYPE: "ko-KR",
     WH_CD: "7777",
-    STOCK_CACHE_SEC: 30,
   };
 
   /**
-   * Helper: Get Zone from ECOUNT
+   * Helper: Get Session from Cache (Supabase)
    */
-  async function getZoneFromECount() {
-    const payload = JSON.stringify({
-      COM_CODE: CONFIG.COM_CODE,
-    });
-
-    return new Promise((resolve, reject) => {
-      const url = new URL("https://oapi.ecount.com/OAPI/V2/Zone");
-      const zoneReq = https.request(
-        {
-          hostname: url.hostname,
-          path: url.pathname,
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-        (res) => {
-          let data = "";
-          res.on("data", (c) => (data += c));
-          res.on("end", () => {
-            try {
-              console.log("Zone API Response:", data);
-              const result = JSON.parse(data);
-              if (result.Status === "200" && result.Data?.ZONE) {
-                console.log("✅ Zone 확인 성공:", result.Data.ZONE);
-                resolve(result.Data.ZONE);
-              } else {
-                console.error("❌ Zone 확인 실패:", result);
-                reject(new Error("Zone lookup failed"));
-              }
-            } catch (e) {
-              reject(e);
-            }
-          });
-        },
-      );
-      zoneReq.on("error", reject);
-      zoneReq.write(payload);
-      zoneReq.end();
-    });
-  }
-
-  /**
-   * Helper: Get Cached Session & Stock from Supabase
-   */
-  async function getFullCache(supabase) {
+  async function getCachedSession(supabase) {
     if (!supabase) return null;
     try {
       const { data } = await supabase
@@ -78,121 +36,117 @@ export default async function handler(req, res) {
         .select("*")
         .eq("id", 1)
         .single();
-      return data;
+
+      if (data?.session_id && data.session_id !== "INIT") {
+        const age = new Date().getTime() - new Date(data.updated_at).getTime();
+        // ECOUNT session lasts ~1 hour. Use if < 50 mins.
+        if (age < 50 * 60 * 1000) {
+          return data.session_id;
+        }
+      }
     } catch (e) {
       console.error("⚠️ Cache read error:", e.message);
-      return null;
     }
+    return null;
   }
 
   /**
-   * Helper: Login to ECOUNT
+   * Helper: Login to ECOUNT and return Session ID
    */
-  async function loginToECount(zone) {
+  async function loginToECount() {
     console.log("🔑 [Vercel] Logging in to ECOUNT...");
-    console.log("Using ZONE:", zone);
-
-    const LOGIN_URL = `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`;
-
-    const payload = JSON.stringify({
+    const sessionPayload = JSON.stringify({
       COM_CODE: CONFIG.COM_CODE,
       USER_ID: CONFIG.USER_ID,
       API_CERT_KEY: CONFIG.API_CERT_KEY,
+      ZONE: CONFIG.ZONE,
       LAN_TYPE: CONFIG.LAN_TYPE,
-      ZONE: zone,
     });
 
-    console.log("📤 Login URL:", LOGIN_URL);
-    console.log("📤 Login Payload:", payload);
+    console.log("📤 Login Payload:", sessionPayload);
 
     return new Promise((resolve, reject) => {
-      const url = new URL(LOGIN_URL);
       const loginReq = https.request(
+        CONFIG.LOGIN_URL,
         {
-          hostname: url.hostname,
-          path: url.pathname,
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(sessionPayload),
+          },
         },
-        (res) => {
+        (loginRes) => {
           let data = "";
-          res.on("data", (c) => (data += c));
-          res.on("end", async () => {
+          loginRes.on("data", (c) => (data += c));
+          loginRes.on("end", () => {
+            console.log("📥 Login Response:", data);
             try {
-              console.log("📥 Login Response:", data);
-
               if (data.trim().startsWith("<")) {
-                console.error("❌ HTML Response instead of JSON");
-                return reject(new Error("ECOUNT Login HTML Response"));
+                console.error(
+                  "❌ ECOUNT returned HTML:",
+                  data.substring(0, 200),
+                );
+                reject(
+                  new Error("ECOUNT API returned HTML (Rate Limit/Error)."),
+                );
+                return;
               }
-
               const result = JSON.parse(data);
-
               if (
                 String(result.Status) === "200" &&
                 result.Data?.Datas?.SESSION_ID
               ) {
-                console.log(
-                  "✅ Login Success! Session ID:",
-                  result.Data.Datas.SESSION_ID,
-                );
+                console.log("✅ Login Success!");
                 resolve(result.Data.Datas.SESSION_ID);
               } else {
-                console.error(
-                  "❌ Login Failed:",
-                  JSON.stringify(result, null, 2),
-                );
-
-                const errorData = {
-                  message:
-                    result.Data?.message ||
-                    result.Error?.Message ||
-                    "Unknown Error",
-                  raw_status: result.Status,
-                  raw_response: result,
-                };
-
-                reject(new Error(`LOGIN_FAIL: ${JSON.stringify(errorData)}`));
+                console.error("❌ Login Failed:", JSON.stringify(result));
+                reject(new Error("Login failed: " + JSON.stringify(result)));
               }
             } catch (e) {
-              console.error("❌ Parse Error:", e.message);
-              reject(e);
+              reject(
+                new Error(
+                  "Login Parse Error: " +
+                    e.message +
+                    " | Raw: " +
+                    data.substring(0, 100),
+                ),
+              );
             }
           });
         },
       );
-
       loginReq.on("error", reject);
-      loginReq.write(payload);
+      loginReq.write(sessionPayload);
       loginReq.end();
     });
   }
 
   /**
-   * Helper: Fetch Stock from ECOUNT
+   * Helper: Fetch Stock Data
    */
-  async function fetchStockFromECount(sessionId, zone) {
-    const targetUrl = `https://oapi${zone}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
+  async function fetchStock(sessionId) {
+    const targetUrl = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
     const { PROD_CD } = req.body || {};
-    const payload = JSON.stringify({
+    const stockPayload = JSON.stringify({
       PROD_CD: PROD_CD || "",
       WH_CD: CONFIG.WH_CD,
       BASE_DATE: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
     });
 
     return new Promise((resolve, reject) => {
-      const url = new URL(targetUrl);
       const stockReq = https.request(
+        targetUrl,
         {
-          hostname: url.hostname,
-          path: url.pathname + url.search,
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(stockPayload),
+          },
         },
-        (res) => {
+        (stockRes) => {
           let data = "";
-          res.on("data", (c) => (data += c));
-          res.on("end", () => {
+          stockRes.on("data", (c) => (data += c));
+          stockRes.on("end", () => {
             try {
               if (data.trim().startsWith("<")) {
                 resolve({ Status: "500", Error: { Message: "HTML Response" } });
@@ -206,110 +160,78 @@ export default async function handler(req, res) {
         },
       );
       stockReq.on("error", reject);
-      stockReq.write(payload);
+      stockReq.write(stockPayload);
       stockReq.end();
     });
   }
 
   try {
-    // ✅ 1단계: Zone 확인
-    console.log("🔍 Step 1: Zone 확인 중...");
-    let actualZone;
-    try {
-      actualZone = await getZoneFromECount();
-      console.log(`✅ Zone 확인됨: ${actualZone}`);
-    } catch (zoneError) {
-      console.warn("⚠️ Zone API 실패, 기본값 사용:", CONFIG.ZONE);
-      actualZone = CONFIG.ZONE;
-    }
+    let sessionId = null;
+    let supabase = null;
+    if (supabaseUrl && supabaseKey)
+      supabase = createClient(supabaseUrl, supabaseKey);
 
-    let supabase =
-      supabaseUrl && supabaseKey
-        ? createClient(supabaseUrl, supabaseKey)
-        : null;
-    let cache = await getFullCache(supabase);
+    // 1. Initial Cache Check
+    sessionId = await getCachedSession(supabase);
 
-    // --- 2. STOCK DATA CACHE CHECK ---
-    if (cache?.stock_data && cache?.stock_updated_at) {
-      const stockAge =
-        (new Date().getTime() - new Date(cache.stock_updated_at).getTime()) /
-        1000;
-      if (stockAge < CONFIG.STOCK_CACHE_SEC) {
+    // 2. Login Logic with Double-Check (Prevents Login Storm)
+    if (!sessionId) {
+      console.log(
+        "⌛ [Vercel] No session. Waiting to prevent concurrent login storm...",
+      );
+      // Random jitter (0-800ms) to spread concurrent requests
+      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 800)));
+
+      // Double-check cache: Maybe another request already logged in while we waited
+      sessionId = await getCachedSession(supabase);
+
+      if (!sessionId) {
+        sessionId = await loginToECount();
+        if (supabase) {
+          console.log("💾 [Cache] Success. Saving new session to Supabase.");
+          await supabase
+            .from("ecount_session")
+            .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+        }
+      } else {
         console.log(
-          `✅ [Cache] Using Cached Stock (${Math.round(stockAge)}s old)`,
+          "✅ [Cache] Re-checked and found session from another request.",
         );
-        return res.status(200).json(cache.stock_data);
       }
+    } else {
+      console.log("✅ [Cache] Found valid session.");
     }
 
-    // --- 3. STORM PROTECTION (JITTER) ---
-    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 800)));
+    // 3. Fetch Stock
+    let stockResult = await fetchStock(sessionId);
 
-    cache = await getFullCache(supabase);
-    if (cache?.stock_data && cache?.stock_updated_at) {
-      const stockAge =
-        (new Date().getTime() - new Date(cache.stock_updated_at).getTime()) /
-        1000;
-      if (stockAge < CONFIG.STOCK_CACHE_SEC) {
-        console.log(
-          `✅ [Cache] Found valid stock after jitter (${Math.round(stockAge)}s old)`,
-        );
-        return res.status(200).json(cache.stock_data);
-      }
-    }
-
-    // --- 4. SESSION ID CHECK ---
-    let sessionId = cache?.session_id !== "INIT" ? cache?.session_id : null;
-    const sessionAge = cache?.updated_at
-      ? (new Date().getTime() - new Date(cache.updated_at).getTime()) / 1000
-      : 9999;
-
-    if (!sessionId || sessionAge > 50 * 60) {
-      sessionId = await loginToECount(actualZone);
-      if (supabase) {
-        await supabase
-          .from("ecount_session")
-          .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
-      }
-    }
-
-    // --- 5. FETCH STOCK FROM ECOUNT ---
-    console.log("🚀 [Vercel] Fetching fresh stock from ECOUNT...");
-    let stockResult = await fetchStockFromECount(sessionId, actualZone);
-
-    // --- 6. RETRY IF SESSION INVALID ---
+    // 4. RETRY LOGIC: If Session Invalid/Error -> Force Login -> Retry
     if (String(stockResult.Status) !== "200") {
-      console.warn("⚠️ Session invalid. Refreshing session and retrying...");
-      sessionId = await loginToECount(actualZone);
-      if (supabase) {
-        await supabase
-          .from("ecount_session")
-          .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+      console.warn(
+        "⚠️ [Vercel] Stock fetch failed. Retrying with fresh login...",
+      );
+
+      // Wait a bit before retry to avoid spamming the lock
+      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 500)));
+
+      // Check if someone else already refreshed it
+      sessionId = await getCachedSession(supabase);
+
+      if (!sessionId) {
+        sessionId = await loginToECount();
+        if (supabase) {
+          await supabase
+            .from("ecount_session")
+            .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+        }
       }
-      stockResult = await fetchStockFromECount(sessionId, actualZone);
+
+      stockResult = await fetchStock(sessionId);
     }
 
-    // --- 7. UPDATE CACHE AND RETURN ---
-    if (String(stockResult.Status) === "200" && supabase) {
-      console.log("💾 [Cache] Updating Stock Cache in Supabase.");
-      await supabase
-        .from("ecount_session")
-        .update({
-          stock_data: stockResult,
-          stock_updated_at: new Date(),
-        })
-        .eq("id", 1);
-    }
-
-    return res.status(200).json(stockResult);
+    res.status(200).json(stockResult);
   } catch (error) {
     console.error("❌ [Vercel] Fatal Error:", error.message);
-    console.error("Full Error:", error);
-
-    res.status(500).json({
-      error: error.message,
-      details: error.stack?.split("\n")[0],
-      timestamp: new Date().toISOString(),
-    });
+    res.status(500).json({ error: error.message });
   }
 }
