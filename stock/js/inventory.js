@@ -283,6 +283,20 @@ function subscribeToRealtime() {
           if (document.activeElement !== input) {
             input.value = updatedProduct.quantity;
             highlightRemoteUpdate(input);
+
+            // 배경색 업데이트 (has-quantity 클래스 추가/제거)
+            const productItem = input.closest(".product-item");
+            if (productItem) {
+              if (
+                updatedProduct.quantity !== null &&
+                updatedProduct.quantity > 0
+              ) {
+                productItem.classList.add("has-quantity");
+              } else {
+                productItem.classList.remove("has-quantity");
+              }
+            }
+
             loadStatistics(); // 통계 업데이트
           }
         }
