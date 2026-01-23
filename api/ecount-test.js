@@ -1,58 +1,3 @@
-import https from "https";
-
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  // POST body에서 값을 받음
-  const {
-    COM_CODE = "603476",
-    USER_ID = "에이피아이",
-    API_CERT_KEY = "403dc3191c92b42aabc59227e3fd15b167",
-    ZONE = "AB",
-    LAN_TYPE = "ko-KR",
-  } = req.body || {};
-
-  console.log("\n========================================");
-  console.log("받은 파라미터:");
-  console.log("========================================");
-  console.log("COM_CODE:", COM_CODE);
-  console.log("USER_ID:", USER_ID);
-  console.log("API_CERT_KEY:", API_CERT_KEY);
-  console.log("ZONE:", ZONE);
-  console.log("LAN_TYPE:", LAN_TYPE);
-
-  try {
-    const loginResult = await testLogin(
-      COM_CODE,
-      USER_ID,
-      API_CERT_KEY,
-      LAN_TYPE,
-      ZONE,
-    );
-
-    console.log("✅ 로그인 성공!");
-    return res.status(200).json({
-      success: true,
-      session_id: loginResult.data.Data.Datas.SESSION_ID,
-      full_response: loginResult.data,
-    });
-  } catch (error) {
-    console.log("❌ 로그인 실패");
-    return res.status(200).json({
-      success: false,
-      error: error.message,
-      response: error.response,
-    });
-  }
-}
-
 function testLogin(comCode, userId, apiKey, lanType, zone) {
   return new Promise((resolve, reject) => {
     const loginUrl = `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`;
@@ -66,24 +11,58 @@ function testLogin(comCode, userId, apiKey, lanType, zone) {
     };
 
     const payload = JSON.stringify(payloadObj);
-
-    console.log("\n📤 Login URL:", loginUrl);
-    console.log("📤 Login Payload:", payload);
-
     const url = new URL(loginUrl);
+
+    console.log("\n========================================");
+    console.log("📤 전송할 HTTP 요청 전체:");
+    console.log("========================================");
+    console.log("Method: POST");
+    console.log("Host:", url.hostname);
+    console.log("Path:", url.pathname);
+    console.log(
+      "Headers:",
+      JSON.stringify(
+        {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+        null,
+        2,
+      ),
+    );
+    console.log("Body:", payload);
+    console.log("Body Length:", Buffer.byteLength(payload), "bytes");
+    console.log("Body (각 필드):");
+    Object.keys(payloadObj).forEach((key) => {
+      console.log(
+        `  ${key}: "${payloadObj[key]}" (${payloadObj[key].length} chars)`,
+      );
+    });
+    console.log("========================================\n");
+
     const req = https.request(
       {
         hostname: url.hostname,
         path: url.pathname,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
       },
       (res) => {
         let data = "";
         res.on("data", (c) => (data += c));
         res.on("end", () => {
-          console.log("\n📥 Response Status:", res.statusCode);
-          console.log("📥 Response Body:", data);
+          console.log("\n========================================");
+          console.log("📥 받은 HTTP 응답 전체:");
+          console.log("========================================");
+          console.log("Status Code:", res.statusCode);
+          console.log("Status Message:", res.statusMessage);
+          console.log("Headers:", JSON.stringify(res.headers, null, 2));
+          console.log("Body:", data);
+          console.log("========================================\n");
+
           try {
             const result = JSON.parse(data);
             if (
@@ -102,7 +81,10 @@ function testLogin(comCode, userId, apiKey, lanType, zone) {
         });
       },
     );
-    req.on("error", reject);
+    req.on("error", (err) => {
+      console.error("❌ Request Error:", err);
+      reject(err);
+    });
     req.write(payload);
     req.end();
   });
