@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     COM_CODE: "603476",
     USER_ID: "KANGSOOHWA",
     API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6",
-    ZONE: "AB",
+    ZONE: "", // ✅ 빈 문자열로 변경
     LAN_TYPE: "ko-KR",
     WH_CD: "7777",
     STOCK_CACHE_SEC: 30,
@@ -48,11 +48,19 @@ export default async function handler(req, res) {
             try {
               console.log("Zone API Response:", data);
               const result = JSON.parse(data);
-              if (result.Status === "200" && result.Data?.ZONE) {
-                console.log("✅ Zone 확인 성공:", result.Data.ZONE);
-                resolve(result.Data.ZONE);
+              if (result.Status === 200) {
+                // EMPTY_ZONE이 true면 빈 문자열 반환
+                if (result.Data?.EMPTY_ZONE === true) {
+                  console.log("✅ EMPTY_ZONE detected - Zone 없음");
+                  resolve("");
+                } else if (result.Data?.ZONE) {
+                  console.log("✅ Zone 확인 성공:", result.Data.ZONE);
+                  resolve(result.Data.ZONE);
+                } else {
+                  console.warn("⚠️ Zone 정보 없음");
+                  resolve("");
+                }
               } else {
-                console.error("❌ Zone 확인 실패:", result);
                 reject(new Error("Zone lookup failed"));
               }
             } catch (e) {
@@ -90,17 +98,27 @@ export default async function handler(req, res) {
    */
   async function loginToECount(zone) {
     console.log("🔑 [Vercel] Logging in to ECOUNT...");
-    console.log("Using ZONE:", zone);
+    console.log("Using ZONE:", zone === "" ? "(empty)" : zone);
 
-    const LOGIN_URL = `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`;
+    // ✅ ZONE이 빈 문자열이면 URL에서 제거
+    const LOGIN_URL = zone
+      ? `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`
+      : `https://oapi.ecount.com/OAPI/V2/OAPILogin`;
 
-    const payload = JSON.stringify({
+    // ✅ ZONE이 빈 문자열이면 payload에서도 제거
+    const payloadObj = {
       COM_CODE: CONFIG.COM_CODE,
       USER_ID: CONFIG.USER_ID,
       API_CERT_KEY: CONFIG.API_CERT_KEY,
       LAN_TYPE: CONFIG.LAN_TYPE,
-      ZONE: zone,
-    });
+    };
+
+    // ZONE이 있을 때만 추가
+    if (zone) {
+      payloadObj.ZONE = zone;
+    }
+
+    const payload = JSON.stringify(payloadObj);
 
     console.log("📤 Login URL:", LOGIN_URL);
     console.log("📤 Login Payload:", payload);
@@ -172,13 +190,20 @@ export default async function handler(req, res) {
    * Helper: Fetch Stock from ECOUNT
    */
   async function fetchStockFromECount(sessionId, zone) {
-    const targetUrl = `https://oapi${zone}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
+    // ✅ ZONE이 빈 문자열이면 URL에서 제거
+    const targetUrl = zone
+      ? `https://oapi${zone}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`
+      : `https://oapi.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
+
     const { PROD_CD } = req.body || {};
     const payload = JSON.stringify({
       PROD_CD: PROD_CD || "",
       WH_CD: CONFIG.WH_CD,
       BASE_DATE: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
     });
+
+    console.log("📤 Stock URL:", targetUrl);
+    console.log("📤 Stock Payload:", payload);
 
     return new Promise((resolve, reject) => {
       const url = new URL(targetUrl);
@@ -194,6 +219,7 @@ export default async function handler(req, res) {
           res.on("data", (c) => (data += c));
           res.on("end", () => {
             try {
+              console.log("📥 Stock Response:", data.substring(0, 200));
               if (data.trim().startsWith("<")) {
                 resolve({ Status: "500", Error: { Message: "HTML Response" } });
               } else {
@@ -214,13 +240,15 @@ export default async function handler(req, res) {
   try {
     // ✅ 1단계: Zone 확인
     console.log("🔍 Step 1: Zone 확인 중...");
-    let actualZone;
+    let actualZone = "";
     try {
       actualZone = await getZoneFromECount();
-      console.log(`✅ Zone 확인됨: ${actualZone}`);
+      console.log(
+        `✅ Zone 확인됨: ${actualZone === "" ? "(empty)" : actualZone}`,
+      );
     } catch (zoneError) {
-      console.warn("⚠️ Zone API 실패, 기본값 사용:", CONFIG.ZONE);
-      actualZone = CONFIG.ZONE;
+      console.warn("⚠️ Zone API 실패, 빈 문자열 사용");
+      actualZone = "";
     }
 
     let supabase =
