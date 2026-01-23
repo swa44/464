@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import https from "https";
 
-// Initialize Supabase Client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -16,20 +15,57 @@ export default async function handler(req, res) {
   }
 
   const CONFIG = {
-    COM_CODE: "603476".trim(),
-    USER_ID: "KANGSOOHWA".trim(), // 영문 ID
-    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6".replace(
-      /[^a-zA-Z0-9]/g,
-      "",
-    ), // 특수문자/공백 완벽 제거
-    ZONE: "AB".trim(), // 대문자 AB
+    COM_CODE: "603476",
+    USER_ID: "KANGSOOHWA",
+    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6",
+    ZONE: "AB",
     LAN_TYPE: "ko-KR",
-    WH_CD: "7777".trim(),
-    STOCK_CACHE_SEC: 30, // 30 second stock cache
+    WH_CD: "7777",
+    STOCK_CACHE_SEC: 30,
   };
 
-  // Revert to OAPI (Production Environment)
-  const LOGIN_URL = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/OAPILogin`;
+  /**
+   * Helper: Get Zone from ECOUNT
+   */
+  async function getZoneFromECount() {
+    const payload = JSON.stringify({
+      COM_CODE: CONFIG.COM_CODE,
+    });
+
+    return new Promise((resolve, reject) => {
+      const url = new URL("https://oapi.ecount.com/OAPI/V2/Zone");
+      const zoneReq = https.request(
+        {
+          hostname: url.hostname,
+          path: url.pathname,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (c) => (data += c));
+          res.on("end", () => {
+            try {
+              console.log("Zone API Response:", data);
+              const result = JSON.parse(data);
+              if (result.Status === "200" && result.Data?.ZONE) {
+                console.log("✅ Zone 확인 성공:", result.Data.ZONE);
+                resolve(result.Data.ZONE);
+              } else {
+                console.error("❌ Zone 확인 실패:", result);
+                reject(new Error("Zone lookup failed"));
+              }
+            } catch (e) {
+              reject(e);
+            }
+          });
+        },
+      );
+      zoneReq.on("error", reject);
+      zoneReq.write(payload);
+      zoneReq.end();
+    });
+  }
 
   /**
    * Helper: Get Cached Session & Stock from Supabase
@@ -50,96 +86,82 @@ export default async function handler(req, res) {
   }
 
   /**
-   * Helper: Get Zone from ECOUNT (Diagnostic)
-   */
-
-  /**
    * Helper: Login to ECOUNT
    */
-  async function loginToECount() {
+  async function loginToECount(zone) {
     console.log("🔑 [Vercel] Logging in to ECOUNT...");
+    console.log("Using ZONE:", zone);
+
+    const LOGIN_URL = `https://oapi${zone}.ecount.com/OAPI/V2/OAPILogin`;
+
     const payload = JSON.stringify({
       COM_CODE: CONFIG.COM_CODE,
       USER_ID: CONFIG.USER_ID,
       API_CERT_KEY: CONFIG.API_CERT_KEY,
-      ZONE: CONFIG.ZONE,
       LAN_TYPE: CONFIG.LAN_TYPE,
+      ZONE: zone,
     });
 
+    console.log("📤 Login URL:", LOGIN_URL);
+    console.log("📤 Login Payload:", payload);
+
     return new Promise((resolve, reject) => {
+      const url = new URL(LOGIN_URL);
       const loginReq = https.request(
-        LOGIN_URL,
-        { method: "POST", headers: { "Content-Type": "application/json" } },
+        {
+          hostname: url.hostname,
+          path: url.pathname,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
         (res) => {
           let data = "";
           res.on("data", (c) => (data += c));
           res.on("end", async () => {
             try {
+              console.log("📥 Login Response:", data);
+
               if (data.trim().startsWith("<")) {
-                console.error(
-                  "❌ [ECOUNT] HTML Response instead of JSON. Check URL or Server Status.",
-                );
+                console.error("❌ HTML Response instead of JSON");
                 return reject(new Error("ECOUNT Login HTML Response"));
               }
+
               const result = JSON.parse(data);
+
               if (
                 String(result.Status) === "200" &&
                 result.Data?.Datas?.SESSION_ID
               ) {
+                console.log(
+                  "✅ Login Success! Session ID:",
+                  result.Data.Datas.SESSION_ID,
+                );
                 resolve(result.Data.Datas.SESSION_ID);
               } else {
                 console.error(
-                  "❌ [ECOUNT] Login Failed Detailed Response:",
+                  "❌ Login Failed:",
                   JSON.stringify(result, null, 2),
                 );
-                // Show info about Config without revealing secrets
-                console.log("ℹ️ [ECOUNT] Current Config Check:", {
-                  COM_CODE: CONFIG.COM_CODE,
-                  USER_ID: CONFIG.USER_ID,
-                  API_CERT_KEY: CONFIG.API_CERT_KEY
-                    ? `PRESENT (Length: ${CONFIG.API_CERT_KEY.length})`
-                    : "MISSING",
-                  ZONE: CONFIG.ZONE,
-                  LAN_TYPE: CONFIG.LAN_TYPE,
-                });
-                const keyHint = CONFIG.API_CERT_KEY
-                  ? `${CONFIG.API_CERT_KEY.substring(0, 4)}...${CONFIG.API_CERT_KEY.slice(-4)}`
-                  : "None";
 
-                // Construct a more descriptive error object
                 const errorData = {
                   message:
                     result.Data?.message ||
                     result.Error?.Message ||
-                    "Unknown ECount Error",
+                    "Unknown Error",
                   raw_status: result.Status,
-                  request_payload: JSON.parse(payload),
-                  diagnostic: {
-                    id: CONFIG.USER_ID,
-                    com: CONFIG.COM_CODE,
-                    expect_zone: CONFIG.ZONE,
-                    key_hint: keyHint,
-                    key_len: CONFIG.API_CERT_KEY?.length,
-                  },
                   raw_response: result,
                 };
 
-                reject(
-                  new Error(`LOGIN_FAIL_DETAIL: ${JSON.stringify(errorData)}`),
-                );
+                reject(new Error(`LOGIN_FAIL: ${JSON.stringify(errorData)}`));
               }
             } catch (e) {
-              console.error(
-                "❌ [ECOUNT] Parse Error:",
-                e.message,
-                "Raw Content:",
-                data.substring(0, 100),
-              );
+              console.error("❌ Parse Error:", e.message);
               reject(e);
             }
           });
         },
       );
+
       loginReq.on("error", reject);
       loginReq.write(payload);
       loginReq.end();
@@ -149,8 +171,8 @@ export default async function handler(req, res) {
   /**
    * Helper: Fetch Stock from ECOUNT
    */
-  async function fetchStockFromECount(sessionId) {
-    const targetUrl = `https://oapi${CONFIG.ZONE}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
+  async function fetchStockFromECount(sessionId, zone) {
+    const targetUrl = `https://oapi${zone}.ecount.com/OAPI/V2/InventoryBalance/GetListInventoryBalanceStatusByLocation?SESSION_ID=${sessionId}`;
     const { PROD_CD } = req.body || {};
     const payload = JSON.stringify({
       PROD_CD: PROD_CD || "",
@@ -159,37 +181,55 @@ export default async function handler(req, res) {
     });
 
     return new Promise((resolve, reject) => {
-      const req = https.request(
-        targetUrl,
-        { method: "POST", headers: { "Content-Type": "application/json" } },
+      const url = new URL(targetUrl);
+      const stockReq = https.request(
+        {
+          hostname: url.hostname,
+          path: url.pathname + url.search,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
         (res) => {
           let data = "";
           res.on("data", (c) => (data += c));
           res.on("end", () => {
             try {
-              if (data.trim().startsWith("<"))
+              if (data.trim().startsWith("<")) {
                 resolve({ Status: "500", Error: { Message: "HTML Response" } });
-              else resolve(JSON.parse(data));
+              } else {
+                resolve(JSON.parse(data));
+              }
             } catch (e) {
               reject(e);
             }
           });
         },
       );
-      req.on("error", reject);
-      req.write(payload);
-      req.end();
+      stockReq.on("error", reject);
+      stockReq.write(payload);
+      stockReq.end();
     });
   }
 
   try {
+    // ✅ 1단계: Zone 확인
+    console.log("🔍 Step 1: Zone 확인 중...");
+    let actualZone;
+    try {
+      actualZone = await getZoneFromECount();
+      console.log(`✅ Zone 확인됨: ${actualZone}`);
+    } catch (zoneError) {
+      console.warn("⚠️ Zone API 실패, 기본값 사용:", CONFIG.ZONE);
+      actualZone = CONFIG.ZONE;
+    }
+
     let supabase =
       supabaseUrl && supabaseKey
         ? createClient(supabaseUrl, supabaseKey)
         : null;
     let cache = await getFullCache(supabase);
 
-    // --- 1. STOCK DATA CACHE CHECK ---
+    // --- 2. STOCK DATA CACHE CHECK ---
     if (cache?.stock_data && cache?.stock_updated_at) {
       const stockAge =
         (new Date().getTime() - new Date(cache.stock_updated_at).getTime()) /
@@ -202,11 +242,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- 2. STORM PROTECTION (JITTER) ---
-    // Wait a random jitter to spread concurrent requests
+    // --- 3. STORM PROTECTION (JITTER) ---
     await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 800)));
 
-    // Re-check cache after jitter
     cache = await getFullCache(supabase);
     if (cache?.stock_data && cache?.stock_updated_at) {
       const stockAge =
@@ -220,38 +258,38 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- 3. SESSION ID CHECK ---
+    // --- 4. SESSION ID CHECK ---
     let sessionId = cache?.session_id !== "INIT" ? cache?.session_id : null;
     const sessionAge = cache?.updated_at
       ? (new Date().getTime() - new Date(cache.updated_at).getTime()) / 1000
       : 9999;
 
     if (!sessionId || sessionAge > 50 * 60) {
-      sessionId = await loginToECount();
-      if (supabase)
+      sessionId = await loginToECount(actualZone);
+      if (supabase) {
         await supabase
           .from("ecount_session")
           .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
+      }
     }
 
-    // --- 4. FETCH STOCK FROM ECOUNT ---
+    // --- 5. FETCH STOCK FROM ECOUNT ---
     console.log("🚀 [Vercel] Fetching fresh stock from ECOUNT...");
-    let stockResult = await fetchStockFromECount(sessionId);
+    let stockResult = await fetchStockFromECount(sessionId, actualZone);
 
-    // --- 5. RETRY IF SESSION INVALID ---
+    // --- 6. RETRY IF SESSION INVALID ---
     if (String(stockResult.Status) !== "200") {
-      console.warn(
-        "⚠️ [Vercel] Session invalid. Refreshing session and retrying fetch...",
-      );
-      sessionId = await loginToECount();
-      if (supabase)
+      console.warn("⚠️ Session invalid. Refreshing session and retrying...");
+      sessionId = await loginToECount(actualZone);
+      if (supabase) {
         await supabase
           .from("ecount_session")
           .upsert({ id: 1, session_id: sessionId, updated_at: new Date() });
-      stockResult = await fetchStockFromECount(sessionId);
+      }
+      stockResult = await fetchStockFromECount(sessionId, actualZone);
     }
 
-    // --- 6. UPDATE CACHE AND RETURN ---
+    // --- 7. UPDATE CACHE AND RETURN ---
     if (String(stockResult.Status) === "200" && supabase) {
       console.log("💾 [Cache] Updating Stock Cache in Supabase.");
       await supabase
@@ -266,10 +304,12 @@ export default async function handler(req, res) {
     return res.status(200).json(stockResult);
   } catch (error) {
     console.error("❌ [Vercel] Fatal Error:", error.message);
-    // Ensure the message and any additional data is sent back
+    console.error("Full Error:", error);
+
     res.status(500).json({
       error: error.message,
-      details: error.stack?.split("\n")[0], // Optional: include first line of stack for more context
+      details: error.stack?.split("\n")[0],
+      timestamp: new Date().toISOString(),
     });
   }
 }
