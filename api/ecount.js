@@ -113,6 +113,7 @@ export default async function handler(req, res) {
                     result.Error?.Message ||
                     "Unknown ECount Error",
                   raw_status: result.Status,
+                  request_payload: JSON.parse(payload),
                   diagnostic: {
                     id: CONFIG.USER_ID,
                     com: CONFIG.COM_CODE,
