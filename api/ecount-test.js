@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const CONFIG = {
     COM_CODE: "603476",
     USER_ID: "KANGSOOHWA",
-    API_CERT_KEY: "57ccf1f47331e4c10b01da90ca2face5c6",
+    API_CERT_KEY: "5bf7bd16a7bf24b83b71f363d060e7fd66",
     ZONE_UPPER: "AB", // 대문자
     ZONE_LOWER: "ab", // 소문자
     LAN_TYPE: "ko-KR",
