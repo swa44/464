@@ -23,37 +23,7 @@ export default async function handler(req, res) {
     ZONE: "AB",
     LAN_TYPE: "ko-KR",
     WH_CD: "7777",
-    STOCK_CACHE_MINUTES: 10, // 10분 캐시
   };
-
-  /**
-   * Helper: Get Cached Stock Data (10분 이내)
-   */
-  async function getCachedStockData(supabase) {
-    if (!supabase) return null;
-    try {
-      const { data } = await supabase
-        .from("ecount_session")
-        .select("*")
-        .eq("id", 1)
-        .single();
-
-      if (data?.stock_data && data?.stock_updated_at) {
-        const age =
-          new Date().getTime() - new Date(data.stock_updated_at).getTime();
-        // 10분(600초) 이내면 캐시된 데이터 사용
-        if (age < CONFIG.STOCK_CACHE_MINUTES * 60 * 1000) {
-          console.log(
-            `✅ [Cache] Using cached stock data (${Math.round(age / 1000)}s old)`,
-          );
-          return data.stock_data;
-        }
-      }
-    } catch (e) {
-      console.error("⚠️ Stock cache read error:", e.message);
-    }
-    return null;
-  }
 
   /**
    * Helper: Get Session from Cache (Supabase)
@@ -201,18 +171,10 @@ export default async function handler(req, res) {
     if (supabaseUrl && supabaseKey)
       supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Stock Data Cache Check (10분 이내면 바로 리턴)
-    const cachedStock = await getCachedStockData(supabase);
-    if (cachedStock) {
-      return res.status(200).json(cachedStock);
-    }
-
-    console.log("⏰ [Cache] No valid stock cache. Fetching fresh data...");
-
-    // 2. Session Cache Check
+    // 1. Initial Cache Check
     sessionId = await getCachedSession(supabase);
 
-    // 3. Login Logic with Double-Check (Prevents Login Storm)
+    // 2. Login Logic with Double-Check (Prevents Login Storm)
     if (!sessionId) {
       console.log(
         "⌛ [Vercel] No session. Waiting to prevent concurrent login storm...",
@@ -240,10 +202,10 @@ export default async function handler(req, res) {
       console.log("✅ [Cache] Found valid session.");
     }
 
-    // 4. Fetch Stock
+    // 3. Fetch Stock
     let stockResult = await fetchStock(sessionId);
 
-    // 5. RETRY LOGIC: If Session Invalid/Error -> Force Login -> Retry
+    // 4. RETRY LOGIC: If Session Invalid/Error -> Force Login -> Retry
     if (String(stockResult.Status) !== "200") {
       console.warn(
         "⚠️ [Vercel] Stock fetch failed. Retrying with fresh login...",
@@ -265,20 +227,6 @@ export default async function handler(req, res) {
       }
 
       stockResult = await fetchStock(sessionId);
-    }
-
-    // 6. Save Stock Data to Cache (10분 캐시)
-    if (String(stockResult.Status) === "200" && supabase) {
-      console.log(
-        "💾 [Cache] Saving stock data to cache (valid for 10 minutes).",
-      );
-      await supabase
-        .from("ecount_session")
-        .update({
-          stock_data: stockResult,
-          stock_updated_at: new Date(),
-        })
-        .eq("id", 1);
     }
 
     res.status(200).json(stockResult);
