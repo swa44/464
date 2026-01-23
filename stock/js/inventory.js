@@ -156,8 +156,14 @@ function displayProducts(products, query = "") {
           ? "text-primary"
           : "text-muted";
 
+      // 수량이 입력된 항목인지 확인
+      const hasQuantity = product.quantity !== null && product.quantity > 0;
+      const itemClass = hasQuantity
+        ? "product-item has-quantity"
+        : "product-item";
+
       return `
-        <div class="product-item" data-id="${product.id}">
+        <div class="${itemClass}" data-id="${product.id}">
             <div class="product-info">
                 <h3>${highlightMatch(product.name, query)}</h3>
                 <div class="code">${product.code}</div>
@@ -172,7 +178,8 @@ function displayProducts(products, query = "") {
                     inputmode="numeric"
                     pattern="[0-9]*"
                     id="qty-${product.id}" 
-                    value="${product.quantity || 0}" 
+                    value="${product.quantity === null || product.quantity === 0 ? "" : product.quantity}" 
+                    placeholder="-"
                     data-product-id="${product.id}"
                     data-product-code="${product.code}"
                 >
@@ -310,19 +317,9 @@ function attachQuantityListeners() {
   const quantityInputs = document.querySelectorAll("input[data-product-id]");
 
   quantityInputs.forEach((input) => {
-    // 포커스 시: 0이면 빈칸으로
+    // 포커스 시: 전체 선택
     input.addEventListener("focus", (e) => {
-      if (e.target.value === "0") {
-        e.target.value = "";
-      }
       e.target.select(); // 전체 선택
-    });
-
-    // 블러 시: 빈칸이면 0으로 복원
-    input.addEventListener("blur", (e) => {
-      if (e.target.value === "" || e.target.value === null) {
-        e.target.value = "0";
-      }
     });
 
     // 입력 시: 숫자만 허용
@@ -331,7 +328,8 @@ function attachQuantityListeners() {
       e.target.value = e.target.value.replace(/[^0-9]/g, "");
 
       const productId = e.target.dataset.productId;
-      const newQuantity = parseInt(e.target.value) || 0;
+      const newQuantity =
+        e.target.value === "" ? null : parseInt(e.target.value) || 0;
 
       // 디바운싱: 500ms 후 자동 저장
       clearTimeout(updateDebounceTimers[productId]);
@@ -344,7 +342,8 @@ function attachQuantityListeners() {
     input.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         const productId = e.target.dataset.productId;
-        const newQuantity = parseInt(e.target.value) || 0;
+        const newQuantity =
+          e.target.value === "" ? null : parseInt(e.target.value) || 0;
 
         clearTimeout(updateDebounceTimers[productId]);
         updateQuantity(productId, newQuantity);
@@ -374,6 +373,16 @@ async function updateQuantity(productId, quantity) {
       setTimeout(() => {
         input.style.borderColor = "";
       }, 1000);
+
+      // 부모 product-item에 has-quantity 클래스 추가/제거
+      const productItem = input.closest(".product-item");
+      if (productItem) {
+        if (quantity !== null && quantity > 0) {
+          productItem.classList.add("has-quantity");
+        } else {
+          productItem.classList.remove("has-quantity");
+        }
+      }
     }
 
     console.log("수량 업데이트 성공:", productId, quantity);

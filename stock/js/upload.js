@@ -123,11 +123,14 @@ async function uploadToDatabase() {
 
     // 데이터 변환
     const productsToInsert = parsedData
-      .map((row) => ({
-        code: String(row[codeKey] || "").trim(),
-        name: String(row[nameKey] || "").trim(),
-        quantity: parseInt(row[quantityKey]) || 0,
-      }))
+      .map((row) => {
+        const quantityValue = String(row[quantityKey] || "").trim();
+        return {
+          code: String(row[codeKey] || "").trim(),
+          name: String(row[nameKey] || "").trim(),
+          quantity: quantityValue === "" ? null : parseInt(quantityValue) || 0,
+        };
+      })
       .filter((p) => p.code && p.name); // 빈 데이터 제외
 
     console.log("업로드할 제품:", productsToInsert.length, "개");
