@@ -171,7 +171,7 @@ function displayProducts(products, query = "") {
                     전산재고: <span class="${ecountClass}" style="font-weight: 600;">${ecountQty}</span>개
                 </div>
             </div>
-            <div class="quantity-input">
+            <div class="quantity-input quantity-wrapper">
                 <label for="qty-${product.id}">실사수량:</label>
                 <input 
                     type="text" 
@@ -183,6 +183,20 @@ function displayProducts(products, query = "") {
                     data-product-id="${product.id}"
                     data-product-code="${product.code}"
                 >
+                <button type="button" class="btn-calc-open" data-target-id="qty-${product.id}" tabindex="-1" title="계산기 열기">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                    <line x1="8" y1="6" x2="16" y2="6"></line>
+                    <line x1="16" y1="14" x2="16" y2="18"></line>
+                    <path d="M16 10h.01"></path>
+                    <path d="M12 10h.01"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M8 14h.01"></path>
+                    <path d="M12 18h.01"></path>
+                    <path d="M8 18h.01"></path>
+                  </svg>
+                </button>
             </div>
         </div>
     `;
@@ -591,4 +605,300 @@ function goToPage(page) {
   currentPage = page;
   displayProducts(allProducts, searchInput.value.trim());
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// --- 🧮 계산기 로직 ---
+
+let currentCalcTargetId = null;
+let calcFormula = ""; // 상단 수식 (예: "10 + 5")
+let calcCurrentInput = "0"; // 현재 입력 중인 숫자 (예: "5")
+let isResultDisplayed = false; // 결과가 표시된 상태인지
+
+function initCalculator() {
+  const modal = document.getElementById("calculatorModal");
+  const closeBtn = document.getElementById("closeCalcBtn");
+  const applyBtn = document.getElementById("applyCalcBtn");
+  const keysContainer = document.querySelector(".calc-keys");
+
+  if (!modal) return;
+
+  // 1. 계산기 열기 버튼 (이벤트 위임)
+  const listContainer = document.getElementById("productList");
+  if (listContainer) {
+    listContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-calc-open");
+      if (btn) {
+        e.preventDefault();
+        const targetId = btn.dataset.targetId;
+        openCalculator(targetId);
+      }
+    });
+  }
+
+  // 2. 모달 닫기
+  if (closeBtn) closeBtn.addEventListener("click", closeCalculator);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeCalculator();
+  });
+
+  // 3. 키패드 입력 (Fast Click - 터치 즉시 반응)
+  if (keysContainer) {
+    const handleKeyInput = (e) => {
+      const btn = e.target.closest(".calc-btn");
+      if (!btn || btn.classList.contains("btn-submit")) return;
+
+      // 터치 딜레이 제거
+      if (e.type === "touchstart") {
+        e.preventDefault();
+      }
+
+      // 시각적 피드백 즉시 적용
+      btn.classList.add("active-press");
+      setTimeout(() => btn.classList.remove("active-press"), 100);
+
+      const action = btn.dataset.action;
+      const value = btn.dataset.value;
+
+      handleCalcInput(action, value);
+    };
+
+    // 터치용 (passive: false -> preventDefault 가능)
+    keysContainer.addEventListener("touchstart", handleKeyInput, {
+      passive: false,
+    });
+    // 마우스용
+    keysContainer.addEventListener("mousedown", handleKeyInput);
+  }
+
+  // 4. 적용 버튼
+  if (applyBtn) {
+    applyBtn.addEventListener("click", applyCalculatorValue);
+  }
+  // 5. PC 키보드 지원 (숫자패드 등)
+  document.addEventListener("keydown", (e) => {
+    const modal = document.getElementById("calculatorModal");
+    if (!modal || !modal.classList.contains("open")) return;
+    const key = e.key;
+    if (/[0-9]/.test(key)) {
+      e.preventDefault();
+      const btn = document.querySelector(`.calc-btn[data-value="${key}"]`);
+      if (btn) {
+        btn.classList.add("active-press");
+        setTimeout(() => btn.classList.remove("active-press"), 100);
+      }
+      handleCalcInput(null, key);
+      return;
+    }
+    const operators = {
+      "+": "add",
+      "-": "subtract",
+      "*": "multiply",
+      "/": "divide",
+    };
+    if (operators[key]) {
+      e.preventDefault();
+      handleCalcInput(operators[key], null);
+      return;
+    }
+    switch (key) {
+      case "Enter":
+        e.preventDefault();
+        applyCalculatorValue();
+        break;
+      case "=":
+        e.preventDefault();
+        handleCalcInput("calculate", null);
+        break;
+      case "Backspace":
+        e.preventDefault();
+        handleCalcInput("backspace", null);
+        break;
+      case "Escape":
+        e.preventDefault();
+        closeCalculator();
+        break;
+      case "Delete":
+        handleCalcInput("clear", null);
+        break;
+      case ".":
+        handleCalcInput(null, ".");
+        break;
+    }
+  });
+}
+
+function openCalculator(targetId) {
+  currentCalcTargetId = targetId;
+  const input = document.getElementById(targetId);
+  if (input) input.blur(); // 배경 입력창 포커스 해제
+  const initialValue = input ? input.value : "";
+
+  calcFormula = "";
+  calcCurrentInput = initialValue !== "" ? initialValue : "0";
+  isResultDisplayed = true;
+
+  updateCalcDisplay();
+
+  const modal = document.getElementById("calculatorModal");
+
+  // hidden 클래스 제거 (기존 코드에 hidden이 있다면)
+  // CSS에 따라 다르지만, 여기선 style.display와 opacity transition 사용
+  // modal.classList.remove('hidden'); // inventory.html에 hidden 클래스는 없고 style이 없을 수도 있음
+  // calculator.css에서는 opacity로 제어. 초기 display: none 필요할 수도.
+
+  // 강제로 display 설정 (CSS와 맞춤)
+  // .calculator-modal { display: flex; ... opacity: 0; pointer-events: none; }
+  // calculator.css 대로면 display: flex가 기본이고 open 클래스로 보임.
+  // CSS만으로는 display: none 처리가 안 되어 있을 수 있으니 JS로 제어
+
+  modal.classList.add("open");
+  document.body.classList.add("modal-open");
+}
+
+function closeCalculator() {
+  const modal = document.getElementById("calculatorModal");
+  modal.classList.remove("open");
+  document.body.classList.remove("modal-open");
+}
+
+function handleCalcInput(action, value) {
+  if (!action) {
+    // 숫자 입력
+    if (isResultDisplayed) {
+      calcCurrentInput = value === "00" ? "0" : value;
+      calcFormula = "";
+      isResultDisplayed = false;
+    } else {
+      if (calcCurrentInput === "0" && value !== ".") {
+        calcCurrentInput = value === "00" ? "0" : value;
+      } else {
+        if (value === "." && calcCurrentInput.includes(".")) return;
+        if (calcCurrentInput.length > 12) return; // 길이 제한
+        calcCurrentInput += value;
+      }
+    }
+    updateCalcDisplay();
+    return;
+  }
+
+  switch (action) {
+    case "add":
+    case "subtract":
+    case "multiply":
+    case "divide":
+      handleOperator(action);
+      break;
+    case "calculate":
+      calculateResult();
+      break;
+    case "clear":
+      calcCurrentInput = "0";
+      updateCalcDisplay();
+      break;
+    case "backspace":
+      if (calcCurrentInput.length > 1) {
+        calcCurrentInput = calcCurrentInput.slice(0, -1);
+      } else {
+        calcCurrentInput = "0";
+      }
+      updateCalcDisplay();
+      break;
+    case "all-clear":
+      calcCurrentInput = "0";
+      calcFormula = "";
+      isResultDisplayed = false;
+      updateCalcDisplay();
+      break;
+  }
+}
+
+function handleOperator(op) {
+  const symbols = {
+    add: "+",
+    subtract: "-",
+    multiply: "*",
+    divide: "/",
+  };
+  const symbol = symbols[op];
+
+  if (isResultDisplayed) {
+    calcFormula = calcCurrentInput + " " + symbol + " ";
+    isResultDisplayed = false;
+    calcCurrentInput = "0";
+  } else {
+    calcFormula += calcCurrentInput + " " + symbol + " ";
+    calcCurrentInput = "0";
+  }
+  updateCalcDisplay();
+}
+
+function calculateResult() {
+  let expression = calcFormula + calcCurrentInput;
+
+  try {
+    if (/[^0-9+\-*/. ]/.test(expression)) {
+      throw new Error("Invalid");
+    }
+
+    // eslint-disable-next-line no-new-func
+    const result = new Function("return " + expression)();
+
+    // 소수점 처리
+    const rounded = Math.round(result * 100) / 100;
+
+    calcCurrentInput = String(rounded);
+    calcFormula = "";
+    isResultDisplayed = true;
+
+    updateCalcDisplay();
+  } catch (e) {
+    calcCurrentInput = "Error";
+    isResultDisplayed = true;
+    updateCalcDisplay();
+  }
+}
+
+function updateCalcDisplay() {
+  const formulaEl = document.getElementById("calcFormula");
+  const resultEl = document.getElementById("calcResult");
+
+  if (formulaEl) {
+    let displayFormula = calcFormula.replace(/\*/g, "×").replace(/\//g, "÷");
+    formulaEl.textContent = displayFormula;
+  }
+
+  if (resultEl) {
+    resultEl.textContent = calcCurrentInput;
+  }
+}
+
+function applyCalculatorValue() {
+  if (!currentCalcTargetId) return;
+
+  if (!isResultDisplayed && calcFormula !== "") {
+    calculateResult();
+  }
+
+  const input = document.getElementById(currentCalcTargetId);
+  if (input) {
+    if (calcCurrentInput === "Error") return;
+
+    input.value = calcCurrentInput;
+
+    const event = new Event("input", { bubbles: true });
+    input.dispatchEvent(event);
+
+    const keyEvent = new KeyboardEvent("keypress", { key: "Enter" });
+    input.dispatchEvent(keyEvent);
+  }
+
+  closeCalculator();
+}
+
+// 초기화 실행
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initCalculator);
+} else {
+  initCalculator();
 }

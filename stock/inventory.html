@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>재고조사 - 수량 입력</title>
     <link rel="stylesheet" href="/stock/css/style.css" />
+    <link rel="stylesheet" href="/stock/css/calculator.css" />
   </head>
   <body>
     <header>
@@ -113,6 +114,55 @@
         </ul>
       </div>
     </main>
+
+    <!-- 계산기 모달 -->
+    <div id="calculatorModal" class="calculator-modal">
+      <div class="calculator-content">
+        <button id="closeCalcBtn" class="btn-close-calc">&times;</button>
+        <div class="calc-display">
+          <div id="calcFormula" class="calc-formula"></div>
+          <div id="calcResult" class="calc-result">0</div>
+        </div>
+        <div class="calc-keys">
+          <button class="calc-btn btn-clear" data-action="all-clear">AC</button>
+          <button class="calc-btn btn-backspace" data-action="backspace">
+            ⌫
+          </button>
+          <button class="calc-btn btn-operator" data-action="divide">÷</button>
+          <button class="calc-btn btn-operator" data-action="multiply">
+            ×
+          </button>
+
+          <button class="calc-btn btn-number" data-value="7">7</button>
+          <button class="calc-btn btn-number" data-value="8">8</button>
+          <button class="calc-btn btn-number" data-value="9">9</button>
+          <button class="calc-btn btn-operator" data-action="subtract">
+            -
+          </button>
+
+          <button class="calc-btn btn-number" data-value="4">4</button>
+          <button class="calc-btn btn-number" data-value="5">5</button>
+          <button class="calc-btn btn-number" data-value="6">6</button>
+          <button class="calc-btn btn-operator" data-action="add">+</button>
+
+          <button class="calc-btn btn-number" data-value="1">1</button>
+          <button class="calc-btn btn-number" data-value="2">2</button>
+          <button class="calc-btn btn-number" data-value="3">3</button>
+          <button class="calc-btn btn-equals" data-action="calculate">=</button>
+
+          <button class="calc-btn btn-number" data-value="00">00</button>
+          <button
+            class="calc-btn btn-number"
+            data-value="0"
+            style="grid-column: span 2"
+          >
+            0
+          </button>
+
+          <button id="applyCalcBtn" class="btn-submit">확인 (입력)</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
