@@ -150,7 +150,7 @@ function displayProducts(products, query = "") {
       const ecountQty =
         ecountStockMap[product.code] !== undefined
           ? ecountStockMap[product.code]
-          : "-";
+          : "0";
       const ecountClass =
         ecountStockMap[product.code] !== undefined
           ? "text-primary"
