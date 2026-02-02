@@ -491,3 +491,17 @@ tbody tr:last-child td {
     border-color: var(--success);
   }
 }
+
+/* 로그인 입력 진동 애니메이션 */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+.shake {
+  animation: shake 0.3s ease-in-out;
+  border-color: var(--danger) !important;
+}
