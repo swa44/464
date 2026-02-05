@@ -1,6 +1,6 @@
 {
   "name": "464.kr",
-  "short_name": "464",
+  "short_name": "재고조사",
   "description": "Inventory management and dashboard",
   "start_url": "/",
   "display": "standalone",
