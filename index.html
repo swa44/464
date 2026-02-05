@@ -1,199 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#667eea" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     <title>464.kr</title>
     <style>
-      * {
+      body {
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
+        background: #f0f2f5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
-
       .container {
         text-align: center;
-        color: white;
-        max-width: 800px;
+        padding: 20px;
       }
-
-      .time {
-        font-size: 6rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        letter-spacing: -2px;
-      }
-
-      .date {
-        font-size: 1.5rem;
-        margin-bottom: 4rem;
-        opacity: 0.9;
-      }
-
-      .quote-container {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        padding: 2rem;
-        border-radius: 16px;
-        margin-bottom: 3rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      }
-
-      .quote {
-        font-size: 1.8rem;
-        line-height: 1.6;
-        margin-bottom: 1rem;
-        font-style: italic;
-      }
-
-      .author {
-        font-size: 1.2rem;
-        opacity: 0.8;
-      }
-
-      .link {
-        display: inline-block;
-        padding: 1rem 2rem;
-        background: rgba(255, 255, 255, 0.2);
+      .btn-inventory {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 280px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         text-decoration: none;
-        border-radius: 8px;
-        font-size: 1.1rem;
-        transition: all 0.3s;
-        backdrop-filter: blur(10px);
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-radius: 16px;
+        box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
+        transition: all 0.3s ease;
       }
-
-      .link:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
+      .btn-inventory:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(118, 75, 162, 0.4);
       }
-
-      @media (max-width: 768px) {
-        .time {
-          font-size: 3rem;
-        }
-        .quote {
-          font-size: 1.3rem;
-        }
+      .btn-inventory:active {
+        transform: translateY(0);
+        box-shadow: 0 5px 10px rgba(118, 75, 162, 0.3);
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="time" id="time">00:00:00</div>
-      <div class="date" id="date">2024년 1월 1일 월요일</div>
-
-      <div class="quote-container">
-        <div class="quote" id="quote">명언을 불러오는 중...</div>
-        <div class="author" id="author">-</div>
-      </div>
+      <a href="/stock/inventory.html" class="btn-inventory">
+        <span>📦</span>
+        <span>재고조사 시작</span>
+      </a>
     </div>
 
     <script>
-      // 명언 데이터
-      const quotes = [
-        {
-          text: "위대한 일을 하기 위해서는 행동하는 것뿐만 아니라 꿈도 꾸어야 하고, 계획할 뿐만 아니라 믿어야 한다.",
-          author: "아나톨 프랑스",
-        },
-        {
-          text: "성공은 최종적인 것이 아니며, 실패는 치명적인 것이 아니다. 중요한 것은 계속하려는 용기다.",
-          author: "윈스턴 처칠",
-        },
-        {
-          text: "당신이 할 수 있다고 믿든 할 수 없다고 믿든 믿는 대로 될 것이다.",
-          author: "헨리 포드",
-        },
-        {
-          text: "미래를 예측하는 가장 좋은 방법은 그것을 창조하는 것이다.",
-          author: "피터 드러커",
-        },
-        {
-          text: "오늘 해야 할 일을 내일로 미루지 말라.",
-          author: "벤자민 프랭클린",
-        },
-        { text: "실패는 성공의 어머니다.", author: "토머스 에디슨" },
-        { text: "행복은 습관이다. 그것을 몸에 지니라.", author: "허버드" },
-        {
-          text: "꿈을 계속 간직하고 있으면 반드시 실현할 때가 온다.",
-          author: "괴테",
-        },
-        { text: "시작이 반이다.", author: "플라톤" },
-        { text: "노력은 절대 배신하지 않는다.", author: "오노 요코" },
-        {
-          text: "인생은 자전거를 타는 것과 같다. 균형을 유지하려면 계속 움직여야 한다.",
-          author: "알베르트 아인슈타인",
-        },
-        { text: "할 수 있다고 생각하면 할 수 있다.", author: "나폴레옹 힐" },
-        { text: "기회는 준비된 자에게만 온다.", author: "루이 파스퇴르" },
-        {
-          text: "작은 기회로 종종 위대한 업적의 시작이 된다.",
-          author: "데모스테네스",
-        },
-        {
-          text: "성공의 비결은 단 한 가지, 잘할 수 있는 일에 광적으로 집중하는 것이다.",
-          author: "톰 모나한",
-        },
-      ];
-
-      // 시간 업데이트
-      function updateTime() {
-        const now = new Date();
-
-        // 시간 표시
-        const hours = String(now.getHours()).padStart(2, "0");
-        const minutes = String(now.getMinutes()).padStart(2, "0");
-        const seconds = String(now.getSeconds()).padStart(2, "0");
-        document.getElementById(
-          "time"
-        ).textContent = `${hours}:${minutes}:${seconds}`;
-
-        // 날짜 표시
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const day = now.getDate();
-        const dayNames = [
-          "일요일",
-          "월요일",
-          "화요일",
-          "수요일",
-          "목요일",
-          "금요일",
-          "토요일",
-        ];
-        const dayName = dayNames[now.getDay()];
-        document.getElementById(
-          "date"
-        ).textContent = `${year}년 ${month}월 ${day}일 ${dayName}`;
+      // Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/service-worker.js")
+            .then((registration) => {
+              console.log("ServiceWorker registration successful");
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed: ", err);
+            });
+        });
       }
-
-      // 랜덤 명언 표시
-      function displayRandomQuote() {
-        const randomIndex = Math.floor(Math.random() * quotes.length);
-        const quote = quotes[randomIndex];
-        document.getElementById("quote").textContent = `"${quote.text}"`;
-        document.getElementById("author").textContent = `- ${quote.author}`;
-      }
-
-      // 초기 실행
-      updateTime();
-      displayRandomQuote();
-
-      // 1초마다 시간 업데이트
-      setInterval(updateTime, 1000);
-
-      // 10초마다 명언 변경
-      setInterval(displayRandomQuote, 10000);
     </script>
   </body>
 </html>

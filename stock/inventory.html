@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>재고조사 - 수량 입력</title>
+    <meta name="theme-color" content="#667eea" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     <link rel="stylesheet" href="/stock/css/style.css" />
     <link rel="stylesheet" href="/stock/css/calculator.css" />
   </head>
@@ -170,5 +173,24 @@
     <script src="/stock/js/config.js"></script>
     <!-- Inventory Logic -->
     <script src="/stock/js/inventory.js"></script>
+
+    <script>
+      // Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/service-worker.js")
+            .then((registration) => {
+              console.log(
+                "ServiceWorker registration successful with scope: ",
+                registration.scope,
+              );
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed: ", err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
