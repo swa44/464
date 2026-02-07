@@ -46,7 +46,7 @@ async function loadStatistics() {
     const { count: counted, error: e2 } = await supabaseClient
       .from("products")
       .select("*", { count: "exact", head: true })
-      .gt("quantity", 0);
+      .gte("quantity", 0);
 
     if (e2) throw e2;
 
@@ -157,7 +157,7 @@ function displayProducts(products, query = "") {
           : "text-muted";
 
       // 수량이 입력된 항목인지 확인
-      const hasQuantity = product.quantity !== null && product.quantity > 0;
+      const hasQuantity = product.quantity !== null && product.quantity >= 0;
       const itemClass = hasQuantity
         ? "product-item has-quantity"
         : "product-item";
@@ -178,7 +178,7 @@ function displayProducts(products, query = "") {
                     inputmode="numeric"
                     pattern="[0-9]*"
                     id="qty-${product.id}" 
-                    value="${product.quantity === null || product.quantity === 0 ? "" : product.quantity}" 
+                    value="${product.quantity === null ? "" : product.quantity}" 
                     placeholder="-"
                     data-product-id="${product.id}"
                     data-product-code="${product.code}"
@@ -303,7 +303,7 @@ function subscribeToRealtime() {
             if (productItem) {
               if (
                 updatedProduct.quantity !== null &&
-                updatedProduct.quantity > 0
+                updatedProduct.quantity >= 0
               ) {
                 productItem.classList.add("has-quantity");
               } else {
@@ -405,7 +405,7 @@ async function updateQuantity(productId, quantity) {
       // 부모 product-item에 has-quantity 클래스 추가/제거
       const productItem = input.closest(".product-item");
       if (productItem) {
-        if (quantity !== null && quantity > 0) {
+        if (quantity !== null && quantity >= 0) {
           productItem.classList.add("has-quantity");
         } else {
           productItem.classList.remove("has-quantity");
