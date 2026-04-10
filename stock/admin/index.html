@@ -11,12 +11,16 @@
   </head>
   <body>
     <!-- Main Content (Hidden by default until auth) -->
-    <div id="mainContent" style="display: block">
+    <div id="mainContent" style="display: none">
       <header>
         <div class="container">
           <h1>📦 재고조사 시스템</h1>
-          <nav>
-            <a href="/stock/admin/index.html" class="active">관리자</a>
+          <nav style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; gap: 12px;">
+              <a href="/stock/admin/index.html" class="active">관리자</a>
+              <a href="/stock/inventory.html">재고조사</a>
+            </div>
+            <button id="logoutBtn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.9rem;">로그아웃</button>
           </nav>
         </div>
       </header>
@@ -205,16 +209,38 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- PapaParse for CSV parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <!-- Config - Inline -->
+    <!-- Config -->
+    <script src="/stock/js/config.js"></script>
     <script>
-      const SUPABASE_URL = "https://zkogemvwkrjhttjvachs.supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb2dlbXZ3a3JqaHR0anZhY2hzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjQ5MTcsImV4cCI6MjA5MTI0MDkxN30.jvhfLGDxpYyuOnXXRxQLU6rauzSOcWxcgBZdbvjdUZk";
-      const supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-      );
       const PRODUCTS_TABLE = "products";
+
+      // 인증 체크 로직
+      async function checkAuth() {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
+        if (error || !session) {
+          console.log('세션 없음, 로그인 페이지로 이동');
+          window.location.href = '/stock/admin/login.html';
+          return;
+        }
+        
+        // 세션이 있으면 메인 콘텐츠 표시
+        document.getElementById('mainContent').style.display = 'block';
+        console.log('로그인 확인됨:', session.user.email);
+      }
+
+      // 로그아웃 로직
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+          alert('로그아웃 중 오류가 발생했습니다: ' + error.message);
+        } else {
+          window.location.href = '/stock/admin/login.html';
+        }
+      });
+
+      // 즉시 체크 (DOM 로드 전에도 실행 가능하도록)
+      checkAuth();
     </script>
     <!-- Logic Scripts -->
     <script src="/stock/js/upload.js"></script>
