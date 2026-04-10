@@ -212,8 +212,6 @@
     <!-- Config -->
     <script src="/stock/js/config.js"></script>
     <script>
-      const PRODUCTS_TABLE = "products";
-
       // 인증 체크 로직
       async function checkAuth() {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
