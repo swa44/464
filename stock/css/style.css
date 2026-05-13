@@ -505,3 +505,45 @@ tbody tr:last-child td {
   animation: shake 0.3s ease-in-out;
   border-color: var(--danger) !important;
 }
+
+/* 위험 버튼 */
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: hsl(0, 84%, 50%);
+}
+
+/* 통과/불일치 배지 */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.badge-pass {
+  background: hsl(142, 76%, 88%);
+  color: hsl(142, 76%, 25%);
+}
+
+.badge-fail {
+  background: hsl(0, 84%, 92%);
+  color: hsl(0, 84%, 40%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge-pass {
+    background: hsl(142, 60%, 20%);
+    color: hsl(142, 76%, 75%);
+  }
+  .badge-fail {
+    background: hsl(0, 60%, 22%);
+    color: hsl(0, 84%, 75%);
+  }
+}

@@ -74,7 +74,52 @@
           </div>
         </div>
 
-        <!-- 2. 다운로드 섹션 -->
+        <!-- 2. 관리 도구 섹션 -->
+        <div class="card" style="border-left: 5px solid var(--warning)">
+          <h2>🛠️ 관리 도구</h2>
+
+          <!-- 수량 초기화 -->
+          <div class="mb-3">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">수량 전체 초기화</h3>
+            <p class="text-muted mb-2" style="font-size: 0.9rem;">업로드된 모든 제품의 수량을 초기화합니다. 재고조사 시작 전에 사용하세요.</p>
+            <button id="resetQuantityBtn" class="btn btn-danger">
+              <span>🔄</span>
+              <span>수량 전체 초기화</span>
+            </button>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
+
+          <!-- 오차범위 설정 -->
+          <div>
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">오차범위 설정</h3>
+            <p class="text-muted mb-2" style="font-size: 0.9rem;">실사수량과 전산재고의 허용 오차범위를 설정합니다. 재고조사 페이지에서 항목마다 통과/불일치가 표시됩니다.</p>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 1.1rem;">±</span>
+                <input
+                  type="number"
+                  id="toleranceInput"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  style="width: 100px;"
+                >
+                <span class="text-muted">개</span>
+              </div>
+              <button id="saveToleranceBtn" class="btn btn-primary" style="padding: 10px 20px;">
+                <span>💾</span>
+                <span>저장</span>
+              </button>
+              <span id="currentTolerance" class="text-muted" style="font-size: 0.9rem;"></span>
+            </div>
+          </div>
+
+          <!-- 알림 영역 -->
+          <div id="adminNotification" class="hidden mt-2"></div>
+        </div>
+
+        <!-- 3. 다운로드 섹션 -->
         <div class="card" style="border-left: 5px solid var(--success)">
           <h2>📥 재고 데이터 다운로드</h2>
           <p class="text-muted mb-3">
@@ -243,6 +288,7 @@
     <!-- Logic Scripts -->
     <script src="/stock/js/upload.js"></script>
     <script src="/stock/js/download.js"></script>
+    <script src="/stock/js/admin.js"></script>
 
     <script>
       // Service Worker Registration

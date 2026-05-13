@@ -35,3 +35,15 @@ CREATE TRIGGER update_products_updated_at
     BEFORE UPDATE ON products
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- 설정 테이블 (오차범위 등 전역 설정 저장)
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
+
+-- 기본 오차범위: 0
+INSERT INTO settings (key, value) VALUES ('tolerance', '0') ON CONFLICT (key) DO NOTHING;

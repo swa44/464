@@ -19,9 +19,13 @@ let totalItems = 0;
 let allProducts = []; // 전체 제품 캐시
 let ecountStockMap = {}; // 이카운트 재고 캐시 (PROD_CD -> QTY)
 let isECountStockLoaded = false; // 이카운트 재고 로드 여부
+let toleranceValue = 0; // 오차범위 (admin에서 설정)
 
 // 페이지 로드 시
 document.addEventListener("DOMContentLoaded", () => {
+  // 오차범위 설정 로드
+  loadToleranceSetting();
+
   // 초기 50개 제품 로드
   loadInitialProducts();
 
@@ -31,6 +35,56 @@ document.addEventListener("DOMContentLoaded", () => {
   // 실시간 동기화 시작
   subscribeToRealtime();
 });
+
+// 오차범위 설정 로드
+async function loadToleranceSetting() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('settings')
+      .select('value')
+      .eq('key', 'tolerance')
+      .single();
+
+    if (!error && data) {
+      toleranceValue = parseInt(data.value) || 0;
+    }
+  } catch (e) {
+    console.error('오차범위 로드 실패:', e);
+  }
+}
+
+// 통과/불일치 배지 HTML 반환
+function getComparisonBadgeHtml(product) {
+  if (product.quantity === null || product.quantity === undefined) return '';
+  if (!isECountStockLoaded) return '';
+  const ecountQty = ecountStockMap[product.code];
+  if (ecountQty === undefined) return '';
+
+  const diff = Math.abs(product.quantity - ecountQty);
+  if (diff <= toleranceValue) {
+    return '<span class="badge badge-pass comparison-badge">통과</span>';
+  } else {
+    return '<span class="badge badge-fail comparison-badge">불일치</span>';
+  }
+}
+
+// 특정 항목의 배지 갱신
+function refreshComparisonBadge(productId, quantity) {
+  const input = document.getElementById(`qty-${productId}`);
+  if (!input) return;
+  const productItem = input.closest('.product-item');
+  if (!productItem) return;
+
+  const oldBadge = productItem.querySelector('.comparison-badge');
+  if (oldBadge) oldBadge.remove();
+
+  const code = input.dataset.productCode;
+  const badgeHtml = getComparisonBadgeHtml({ quantity, code });
+  if (badgeHtml) {
+    const ecountStockEl = productItem.querySelector('.ecount-stock');
+    if (ecountStockEl) ecountStockEl.insertAdjacentHTML('beforeend', badgeHtml);
+  }
+}
 
 // 실시간 통계 로드
 async function loadStatistics() {
@@ -169,6 +223,7 @@ function displayProducts(products, query = "") {
                 <div class="code">${product.code}</div>
                 <div class="ecount-stock" style="margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary);">
                     전산재고: <span class="${ecountClass}" style="font-weight: 600;">${ecountQty}</span>개
+                    ${getComparisonBadgeHtml(product)}
                 </div>
             </div>
             <div class="quantity-input quantity-wrapper">
@@ -311,6 +366,9 @@ function subscribeToRealtime() {
               }
             }
 
+            // 배지 갱신
+            refreshComparisonBadge(updatedProduct.id, updatedProduct.quantity);
+
             loadStatistics(); // 통계 업데이트
           }
         }
@@ -412,6 +470,13 @@ async function updateQuantity(productId, quantity) {
         }
       }
     }
+
+    // allProducts 캐시 동기화
+    const idx = allProducts.findIndex((p) => p.id === parseInt(productId));
+    if (idx !== -1) allProducts[idx].quantity = quantity;
+
+    // 배지 갱신
+    refreshComparisonBadge(productId, quantity);
 
     console.log("수량 업데이트 성공:", productId, quantity);
     loadStatistics(); // 통계 업데이트
