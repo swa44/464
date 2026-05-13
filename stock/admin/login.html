@@ -65,14 +65,10 @@
             
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">아이디</label>
-                    <input type="text" id="username" required placeholder="admin" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;">
-                </div>
-                <div class="form-group">
                     <label for="password">비밀번호</label>
-                    <input type="password" id="password" required placeholder="••••••••" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;">
+                    <input type="password" id="password" required placeholder="••••••••" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;" autofocus>
                 </div>
-                
+
                 <button type="submit" id="submitBtn" class="btn btn-primary login-btn">
                     로그인
                 </button>
@@ -91,13 +87,9 @@
     <script src="/stock/js/config.js"></script>
     <script>
         const loginForm = document.getElementById('loginForm');
-        const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const submitBtn = document.getElementById('submitBtn');
         const errorMessage = document.getElementById('errorMessage');
-
-        // 기본 도메인 설정 (아이디 뒤에 자동으로 붙음)
-        const DEFAULT_DOMAIN = '@464.kr';
 
         // 이미 로그인되어 있는지 확인
         async function checkSession() {
@@ -110,38 +102,32 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            let id = usernameInput.value.trim();
-            const password = passwordInput.value;
-            
-            if (!id || !password) return;
 
-            // 아이디 형식에 @가 없으면 기본 도메인 추가
-            const email = id.includes('@') ? id : id + DEFAULT_DOMAIN;
-            
-            // 상태 업데이트
+            const password = passwordInput.value;
+            if (!password) return;
+
             submitBtn.disabled = true;
             submitBtn.textContent = '로그인 중...';
             errorMessage.textContent = '';
-            
+
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email,
+                    email: ADMIN_EMAIL,
                     password
                 });
-                
+
                 if (error) throw error;
-                
-                // 로그인 성공 시 이동
+
                 window.location.href = '/stock/admin/index.html';
-                
+
             } catch (err) {
                 console.error('로그인 실패:', err.message);
-                errorMessage.textContent = '로그인에 실패했습니다. 이메일과 비밀번호를 확인하세요.';
+                errorMessage.textContent = '비밀번호가 올바르지 않습니다.';
                 submitBtn.disabled = false;
                 submitBtn.textContent = '로그인';
-                
-                // 흔들림 효과
+                passwordInput.value = '';
+                passwordInput.focus();
+
                 loginForm.classList.add('shake');
                 setTimeout(() => loginForm.classList.remove('shake'), 500);
             }

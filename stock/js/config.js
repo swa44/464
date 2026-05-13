@@ -9,6 +9,9 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_ANON_KEY,
 );
 
+// 관리자 고정 이메일 (로그인 시 이메일 필드 대신 사용)
+const ADMIN_EMAIL = "admin@464stock.internal";
+
 // 테이블 이름
 const PRODUCTS_TABLE = "products";
 
