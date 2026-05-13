@@ -46,7 +46,7 @@ async function loadToleranceSetting() {
       .single();
 
     if (!error && data) {
-      toleranceValue = parseInt(data.value) || 0;
+      toleranceValue = parseFloat(data.value) || 0;
     }
   } catch (e) {
     console.error('오차범위 로드 실패:', e);
@@ -60,8 +60,15 @@ function getComparisonBadgeHtml(product) {
   const ecountQty = ecountStockMap[product.code];
   if (ecountQty === undefined) return '';
 
-  const diff = Math.abs(product.quantity - ecountQty);
-  if (diff <= toleranceValue) {
+  // 전산재고가 0이면 실사도 0일 때만 통과
+  if (ecountQty === 0) {
+    return product.quantity === 0
+      ? '<span class="badge badge-pass comparison-badge">통과</span>'
+      : '<span class="badge badge-fail comparison-badge">불일치</span>';
+  }
+
+  const diffPct = Math.abs(product.quantity - ecountQty) / ecountQty * 100;
+  if (diffPct <= toleranceValue) {
     return '<span class="badge badge-pass comparison-badge">통과</span>';
   } else {
     return '<span class="badge badge-fail comparison-badge">불일치</span>';

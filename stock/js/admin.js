@@ -27,10 +27,10 @@ async function loadTolerance() {
 async function saveTolerance() {
   const input = document.getElementById('toleranceInput');
   const raw = input.value.trim();
-  const value = parseInt(raw);
+  const value = parseFloat(raw);
 
-  if (raw === '' || isNaN(value) || value < 0) {
-    showAdminNotification('0 이상의 숫자를 입력해주세요.', 'error');
+  if (raw === '' || isNaN(value) || value < 0 || value > 100) {
+    showAdminNotification('0~100 사이의 숫자를 입력해주세요.', 'error');
     return;
   }
 
@@ -45,7 +45,7 @@ async function saveTolerance() {
     if (error) throw error;
 
     updateCurrentToleranceLabel(value);
-    showAdminNotification(`오차범위 ±${value}개로 저장되었습니다.`, 'success');
+    showAdminNotification(`오차범위 ±${value}%로 저장되었습니다.`, 'success');
   } catch (e) {
     showAdminNotification('저장 실패: ' + e.message, 'error');
   } finally {
@@ -82,7 +82,7 @@ async function resetQuantities() {
 
 function updateCurrentToleranceLabel(value) {
   const label = document.getElementById('currentTolerance');
-  if (label) label.textContent = `현재 적용 중: ±${value}개`;
+  if (label) label.textContent = `현재 적용 중: ±${value}%`;
 }
 
 function showAdminNotification(message, type = 'info') {
