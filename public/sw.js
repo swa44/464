@@ -1,10 +1,11 @@
-const CACHE_NAME = "workout-counter-v2";
+const CACHE_NAME = "workout-counter-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
   "/icons/icon.svg",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
+  "/sounds/complete.wav",
 ];
 
 self.addEventListener("install", (event) => {

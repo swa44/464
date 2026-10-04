@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -9,43 +9,19 @@ interface InstallPromptEvent extends Event {
 
 const TARGET_OPTIONS = [50, 100, 200];
 
-function playCompleteSound() {
-  const AudioContextClass = window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-  if (!AudioContextClass) return;
-
-  const context = new AudioContextClass();
-  const now = context.currentTime;
-  const notes = [523.25, 783.99];
-
-  notes.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = now + index * 0.16;
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, start);
-    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.92, start + 0.32);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.24, start + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(start + 0.4);
-  });
-
-  window.setTimeout(() => void context.close(), 900);
-}
-
 export default function Home() {
   const [count, setCount] = useState(0);
   const [target, setTarget] = useState(100);
   const [hydrated, setHydrated] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const completeSound = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    const audio = new Audio("/sounds/complete.wav");
+    audio.preload = "auto";
+    completeSound.current = audio;
+
     const savedCount = Number(window.localStorage.getItem("workout-count"));
     const savedTarget = Number(window.localStorage.getItem("workout-target"));
     if (Number.isFinite(savedCount) && savedCount >= 0) setCount(savedCount);
@@ -61,7 +37,11 @@ export default function Home() {
       setInstallPrompt(event as InstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handleInstall);
-    return () => window.removeEventListener("beforeinstallprompt", handleInstall);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstall);
+      audio.pause();
+      completeSound.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -79,7 +59,10 @@ export default function Home() {
     setCount(nextCount);
 
     if (count < target && nextCount >= target) {
-      playCompleteSound();
+      if (completeSound.current) {
+        completeSound.current.currentTime = 0;
+        void completeSound.current.play();
+      }
       if ("vibrate" in navigator) navigator.vibrate([80, 50, 160]);
     } else if ("vibrate" in navigator) {
       navigator.vibrate(28);
