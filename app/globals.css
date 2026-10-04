@@ -1,0 +1,193 @@
+:root {
+  --bg: #131714;
+  --surface: #1b211d;
+  --surface-soft: #222a25;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #f5f8f5;
+  --muted: #9da7a0;
+  --lime: #c7f36a;
+  --lime-dark: #18220b;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 85% 5%, rgba(199, 243, 106, 0.09), transparent 28rem),
+    var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
+  font-weight: 600;
+}
+
+button, input { font: inherit; }
+button { touch-action: manipulation; }
+
+.app-shell {
+  width: min(100%, 480px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; font-size: 18px; letter-spacing: -0.03em; }
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 12px;
+  background: var(--lime);
+  color: var(--lime-dark);
+  font-weight: 900;
+  font-size: 15px;
+  transform: rotate(-5deg);
+}
+
+.install-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.install-help {
+  margin: -8px 0 16px;
+  padding: 13px 15px;
+  border: 1px solid rgba(199, 243, 106, 0.2);
+  border-radius: 14px;
+  background: rgba(199, 243, 106, 0.08);
+  color: #dce7d6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.counter-card, .target-card {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.035), transparent 55%), var(--surface);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.22);
+}
+
+.counter-card { padding: 21px; }
+.status-row { display: flex; justify-content: space-between; align-items: center; }
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: #b6c0b9;
+  font-size: 12px;
+}
+.status-pill.complete { color: var(--lime); background: rgba(199, 243, 106, 0.1); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #879088; box-shadow: 0 0 0 4px rgba(135,144,136,.1); }
+.complete .status-dot { background: var(--lime); box-shadow: 0 0 0 4px rgba(199,243,106,.12); }
+.percent { color: var(--lime); font-size: 14px; }
+
+.count-wrap { padding: 32px 0 27px; text-align: center; }
+.count-label { margin: 0 0 2px; color: var(--muted); font-size: 13px; }
+.count-number { margin: 0; font-size: clamp(76px, 24vw, 112px); line-height: 1; letter-spacing: -0.085em; font-weight: 850; font-variant-numeric: tabular-nums; }
+.remaining { margin: 13px 0 0; color: #c4ccc6; font-size: 15px; }
+
+.progress-track { height: 7px; margin-bottom: 22px; overflow: hidden; border-radius: 999px; background: #303832; }
+.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a8db4b, var(--lime)); transition: width 260ms ease; box-shadow: 0 0 16px rgba(199,243,106,.34); }
+
+.add-button {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 158px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--lime);
+  color: var(--lime-dark);
+  font-size: 41px;
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  cursor: pointer;
+  box-shadow: 0 11px 0 #83a936, 0 22px 36px rgba(0,0,0,.25);
+  transition: transform 80ms ease, box-shadow 80ms ease, filter 150ms ease;
+}
+.add-button .plus { font-size: 34px; }
+.add-button small { position: absolute; bottom: 23px; font-size: 12px; letter-spacing: 0; opacity: .58; }
+.add-button:active { transform: translateY(7px) scale(.99); box-shadow: 0 4px 0 #83a936, 0 12px 25px rgba(0,0,0,.22); }
+.add-button.done { background: #e1ff9f; }
+
+.quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 23px; }
+.quick-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 49px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-soft);
+  color: #d6ddd8;
+  font-size: 13px;
+  cursor: pointer;
+}
+.quick-actions button:disabled { opacity: .35; }
+
+.target-card { margin-top: 14px; padding: 20px; }
+.target-card > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.section-kicker { margin: 0; color: var(--muted); font-size: 13px; }
+.target-card h2 { margin: 0; font-size: 22px; letter-spacing: -.04em; }
+.stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: 8px; margin-top: 17px; }
+.stepper button, .stepper input {
+  height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: center;
+}
+.stepper button { font-size: 24px; cursor: pointer; }
+.stepper input { width: 100%; outline: none; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stepper input:focus { border-color: rgba(199,243,106,.55); }
+.preset-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.preset-row button { min-height: 39px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.preset-row button.selected { border-color: rgba(199,243,106,.35); background: rgba(199,243,106,.1); color: var(--lime); }
+
+.save-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 18px 0 0; color: #747e77; font-size: 12px; }
+.save-note svg { width: 15px; }
+
+@media (max-height: 760px) {
+  .app-shell { padding-top: 12px; }
+  .topbar { margin-bottom: 12px; }
+  .count-wrap { padding: 20px 0; }
+  .count-number { font-size: 70px; }
+  .add-button { min-height: 130px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}

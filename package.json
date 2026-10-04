@@ -1,14 +1,21 @@
 {
-  "name": "stock-inventory-system",
+  "name": "workout-counter",
   "version": "1.0.0",
-  "description": "Inventory management with ECOUNT ERP integration",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
   },
-  "engines": {
-    "node": "20.x"
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
   }
 }
