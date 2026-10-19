@@ -16,7 +16,6 @@ function amapUrl(keyword: string) {
 function dianpingUrl(keyword: string) {
   return `https://www.dianping.com/search/keyword/15/0_${encodeURIComponent(keyword)}`;
 }
-
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);

@@ -1,7 +1,7 @@
 // 중국 현지에서 데이터가 끊겨도 마지막으로 본 화면을 볼 수 있게 캐시한다.
 // 캐시 이름이 바뀌면 이전 앱(운동 카운터)의 캐시는 activate 단계에서 삭제된다.
-const CACHE_NAME = "xiamen-guide-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE_NAME = "xiamen-guide-v2";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
