@@ -123,7 +123,7 @@ export default function Page() {
       {tab === "맛집" && (
         <section className="list">
           <p className="hint">
-            호텔 기준 중산로·팔시시장이 걸어서 10분 거리예요. <b>★</b>는 우선 추천. 가격은 후기 기준 참고값이에요.
+            호텔 기준 중산로·팔시시장이 걸어서 10분 거리예요. <b>★</b>는 다중뎬핑 필츠방(必吃榜)·씨트립 인기 목록에 오른 곳이에요. 가격은 후기 기준 참고값이에요.
             실시간 평점은 <b>평점 보기</b>(다중뎬핑)나 고덕에서 확인하세요.
           </p>
           <div className="chips">
@@ -136,10 +136,11 @@ export default function Page() {
           {group === "미쉐린" && (
             <p className="hint">2026 푸젠 미쉐린 가이드에 샤먼 식당 42곳이 실렸고, 그중 31곳이 가성비 식당인 빕 구르망이에요.</p>
           )}
-          {restaurants.filter((r) => r.group === group).map((r) => (
+          {restaurants.filter((r) => r.group === group).sort((a, b) => Number(Boolean(b.pop)) - Number(Boolean(a.pop))).map((r) => (
             <article key={r.name} className="card">
               <div className="card-head">
-                <h2>{r.star && <span className="star">★ </span>}{r.name}</h2>
+                <h2>{r.pop && <span className="star">★ </span>}{r.name}</h2>
+                {r.pop && <p className="pop">{r.pop}</p>}
                 {r.zh && <p className="zh-title">{r.zh}</p>}
                 {(r.distance || r.price) && (
                   <p className="muted">{[r.distance, r.price].filter(Boolean).join(" · ")}</p>
