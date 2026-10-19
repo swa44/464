@@ -11,11 +11,6 @@ const GROUPS: Restaurant["group"][] = ["해산물", "전통음식", "팔시 간�
 function amapUrl(keyword: string) {
   return `https://uri.amap.com/search?keyword=${encodeURIComponent(keyword)}&city=350200&callnative=1`;
 }
-
-// 다중뎬핑(大众点评) 검색. 도시 ID 15 = 샤먼. 실시간 평점·리뷰 확인용.
-function dianpingUrl(keyword: string) {
-  return `https://www.dianping.com/search/keyword/15/0_${encodeURIComponent(keyword)}`;
-}
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -123,7 +118,7 @@ export default function Page() {
         <section className="list">
           <p className="hint">
             호텔 기준 중산로·팔시시장이 걸어서 10분 거리예요. <b>★</b>는 다중뎬핑 필츠방(必吃榜)·씨트립 인기 목록에 오른 곳이에요. 가격은 후기 기준 참고값이에요.
-            실시간 평점은 <b>평점 보기</b>(다중뎬핑)나 고덕에서 확인하세요.
+            실시간 평점(评分)과 리뷰는 <b>고덕에서 열기</b>로 확인하세요.
           </p>
           <div className="chips">
             {GROUPS.map((g) => (
@@ -150,12 +145,7 @@ export default function Page() {
               {r.zh && <CopyRow label="상호" text={r.zh} onCopy={onCopy} />}
               {r.addr && <CopyRow label="주소" text={r.addr} onCopy={onCopy} />}
               {(r.zh || r.addr) && (
-                <div className="btn-pair">
-                  <a className="btn wide" href={amapUrl(r.zh ?? r.addr!)} target="_blank" rel="noreferrer">고덕에서 열기</a>
-                  {r.zh && (
-                    <a className="btn wide dp" href={dianpingUrl(r.zh)} target="_blank" rel="noreferrer">평점 보기 · 点评</a>
-                  )}
-                </div>
+                <a className="btn wide" href={amapUrl(r.zh ?? r.addr!)} target="_blank" rel="noreferrer">고덕에서 열기 · 평점 보기</a>
               )}
             </article>
           ))}

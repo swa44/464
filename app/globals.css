@@ -126,9 +126,6 @@ button { font: inherit; touch-action: manipulation; }
   text-align: center;
 }
 .btn.wide { display: block; margin-top: 8px; background: var(--accent-soft); color: var(--accent); }
-.btn-pair { display: flex; gap: 8px; }
-.btn-pair .btn { flex: 1; }
-.btn.dp { background: var(--warm-soft); color: var(--warm); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
