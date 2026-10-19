@@ -1,25 +1,14 @@
 {
-  "name": "딱 10개 - 운동 카운터",
-  "short_name": "딱 10개",
-  "description": "운동 횟수를 10개씩 빠르게 기록하세요.",
+  "name": "샤먼 여행 노트",
+  "short_name": "샤먼",
+  "description": "샤먼 여행지·맛집·고덕지도 주소 복사",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#131714",
-  "theme_color": "#131714",
+  "background_color": "#f4f1ea",
+  "theme_color": "#0f6e78",
   "lang": "ko-KR",
   "orientation": "portrait",
   "icons": [
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

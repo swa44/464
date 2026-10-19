@@ -2,27 +2,25 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "딱 10개 | 운동 카운터",
-  description: "운동 횟수를 10개씩 빠르게 기록하는 모바일 운동 카운터",
-  applicationName: "딱 10개",
+  title: "샤먼 여행 노트",
+  description: "샤먼 여행지·맛집 정리와 고덕지도용 중국어 주소 복사",
+  applicationName: "샤먼 여행 노트",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "딱 10개",
+    statusBarStyle: "default",
+    title: "샤먼",
   },
   icons: {
     icon: "/icons/icon.svg",
-    apple: "/icons/icon-192x192.png",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#131714",
+  themeColor: "#f4f1ea",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

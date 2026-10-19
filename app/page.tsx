@@ -1,197 +1,217 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { foods, geography, mealPlan, places, restaurants, tips, type Restaurant } from "./data";
 
-interface InstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+const TABS = ["장소", "맛집", "먹거리", "지리", "꿀팁"] as const;
+type Tab = (typeof TABS)[number];
+const GROUPS: Restaurant["group"][] = ["해산물", "전통음식", "팔시 간식", "구랑위", "미쉐린"];
+
+// 350200 = 샤먼 행정코드. callnative=1이면 고덕 앱이 설치돼 있을 때 앱으로 연다.
+function amapUrl(keyword: string) {
+  return `https://uri.amap.com/search?keyword=${encodeURIComponent(keyword)}&city=350200&callnative=1`;
 }
 
-const TARGET_OPTIONS = [50, 100, 200];
+// 다중뎬핑(大众点评) 검색. 도시 ID 15 = 샤먼. 실시간 평점·리뷰 확인용.
+function dianpingUrl(keyword: string) {
+  return `https://www.dianping.com/search/keyword/15/0_${encodeURIComponent(keyword)}`;
+}
 
-export default function Home() {
-  const [count, setCount] = useState(0);
-  const [target, setTarget] = useState(100);
-  const [hydrated, setHydrated] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
-  const [showInstallHelp, setShowInstallHelp] = useState(false);
-  const completeSound = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    const audio = new Audio("/sounds/complete.wav");
-    audio.preload = "auto";
-    completeSound.current = audio;
-
-    const savedCount = Number(window.localStorage.getItem("workout-count"));
-    const savedTarget = Number(window.localStorage.getItem("workout-target"));
-    if (Number.isFinite(savedCount) && savedCount >= 0) setCount(savedCount);
-    if (Number.isFinite(savedTarget) && savedTarget > 0) setTarget(savedTarget);
-    setHydrated(true);
-
-    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js");
-    }
-
-    const handleInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handleInstall);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleInstall);
-      audio.pause();
-      completeSound.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem("workout-count", String(count));
-    window.localStorage.setItem("workout-target", String(target));
-  }, [count, target, hydrated]);
-
-  const isComplete = count >= target;
-  const progress = Math.min(100, Math.round((count / target) * 100));
-  const remaining = Math.max(0, target - count);
-
-  function addTen() {
-    const nextCount = count + 10;
-    setCount(nextCount);
-
-    if (count < target && nextCount >= target) {
-      if (completeSound.current) {
-        completeSound.current.currentTime = 0;
-        void completeSound.current.play();
-      }
-      if ("vibrate" in navigator) navigator.vibrate([80, 50, 160]);
-    } else if ("vibrate" in navigator) {
-      navigator.vibrate(28);
-    }
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.setAttribute("readonly", "");
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(el);
+    return ok;
   }
+}
 
-  function changeTarget(nextTarget: number) {
-    if (!Number.isFinite(nextTarget)) return;
-    setTarget(Math.max(10, Math.min(9990, Math.round(nextTarget / 10) * 10)));
-  }
-
-  async function installApp() {
-    if (!installPrompt) {
-      setShowInstallHelp((current) => !current);
-      return;
-    }
-    await installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
-  }
-
+function CopyRow({ label, text, onCopy }: { label: string; text: string; onCopy: (t: string) => void }) {
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">10</span>
-          <span>딱 10개</span>
-        </div>
-        <button className="install-button" type="button" onClick={installApp}>
-          <DownloadIcon />
-          설치
-        </button>
-      </header>
-
-      {showInstallHelp && (
-        <aside className="install-help">
-          브라우저 메뉴의 <strong>홈 화면에 추가</strong> 또는 <strong>앱 설치</strong>를 눌러주세요.
-        </aside>
-      )}
-
-      <section className="counter-card" aria-live="polite">
-        <div className="status-row">
-          <span className={`status-pill ${isComplete ? "complete" : ""}`}>
-            <span className="status-dot" />
-            {isComplete ? "오늘 운동 완료" : "운동 진행 중"}
-          </span>
-          <span className="percent">{progress}%</span>
-        </div>
-
-        <div className="count-wrap">
-          <p className="count-label">현재 횟수</p>
-          <p className="count-number">{count.toLocaleString("ko-KR")}</p>
-          <p className="remaining">
-            {isComplete ? "목표를 달성했어요!" : `${remaining.toLocaleString("ko-KR")}개 남았어요`}
-          </p>
-        </div>
-
-        <div className="progress-track" aria-label={`목표 달성률 ${progress}%`}>
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
-        </div>
-
-        <button className={`add-button ${isComplete ? "done" : ""}`} type="button" onClick={addTen}>
-          <span className="plus">+</span>
-          <span>10개</span>
-          <small>탭해서 기록</small>
-        </button>
-
-        <div className="quick-actions">
-          <button type="button" onClick={() => setCount((value) => Math.max(0, value - 10))} disabled={count === 0}>
-            <UndoIcon />
-            10개 취소
-          </button>
-          <button type="button" onClick={() => setCount(0)} disabled={count === 0}>
-            <ResetIcon />
-            처음부터
-          </button>
-        </div>
-      </section>
-
-      <section className="target-card">
-        <div>
-          <p className="section-kicker">오늘의 목표</p>
-          <h2>{target.toLocaleString("ko-KR")}개</h2>
-        </div>
-        <div className="stepper" aria-label="목표 횟수 조절">
-          <button type="button" aria-label="목표 10개 줄이기" onClick={() => changeTarget(target - 10)}>−</button>
-          <input
-            aria-label="목표 횟수"
-            inputMode="numeric"
-            value={target}
-            onChange={(event) => {
-              const value = event.target.value.replace(/[^0-9]/g, "");
-              if (value) setTarget(Math.min(9990, Number(value)));
-            }}
-            onBlur={() => changeTarget(target)}
-          />
-          <button type="button" aria-label="목표 10개 늘리기" onClick={() => changeTarget(target + 10)}>+</button>
-        </div>
-        <div className="preset-row">
-          {TARGET_OPTIONS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={target === option ? "selected" : ""}
-              onClick={() => setTarget(option)}
-            >
-              {option}개
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <p className="save-note"><CheckIcon /> 기록은 이 기기에 자동 저장돼요</p>
-    </main>
+    <div className="copy-row">
+      <div className="copy-text">
+        <span className="copy-label">{label}</span>
+        <span className="zh">{text}</span>
+      </div>
+      <button type="button" className="btn" onClick={() => onCopy(text)}>복사</button>
+    </div>
   );
 }
 
-function DownloadIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 19h14" /></svg>;
-}
+export default function Page() {
+  const [tab, setTab] = useState<Tab>("장소");
+  const [group, setGroup] = useState<Restaurant["group"]>("해산물");
+  const [toast, setToast] = useState("");
 
-function UndoIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5M5 12h9a5 5 0 0 1 5 5" /></svg>;
-}
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/sw.js");
+    }
+  }, []);
 
-function ResetIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 9m0-6v6h6" /></svg>;
-}
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 1600);
+    return () => clearTimeout(t);
+  }, [toast]);
 
-function CheckIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
+  const onCopy = async (text: string) => {
+    const ok = await copyText(text);
+    setToast(ok ? "복사했어요 · 고덕 검색창에 붙여넣기" : "복사에 실패했어요. 길게 눌러 직접 복사해 주세요");
+  };
+
+  const selectTab = (t: Tab) => {
+    setTab(t);
+    window.scrollTo({ top: 0 });
+  };
+
+  return (
+    <main className="shell">
+      <header className="hero">
+        <p className="eyebrow">厦门 · XIAMEN</p>
+        <h1>샤먼 여행 노트</h1>
+        <p className="lead">
+          대만 바로 맞은편, 바다와 섬의 도시. 숙소는 구랑위가 정면으로 보이는 <b>스위스 그랜드 샤먼</b>이에요.
+        </p>
+        <div className="facts">
+          <span>📅 10.21 – 10.25</span>
+          <span>🕐 한국 −1시간</span>
+          <span>🌴 아열대 · 습함</span>
+          <span>💳 알리페이/위챗</span>
+        </div>
+      </header>
+
+      <nav className="tabs" aria-label="섹션">
+        {TABS.map((t) => (
+          <button key={t} type="button" className={t === tab ? "tab active" : "tab"} onClick={() => selectTab(t)}>
+            {t}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "장소" && (
+        <section className="list">
+          <p className="hint">주소를 <b>복사</b>해서 고덕지도 검색창에 붙여넣거나, <b>고덕에서 열기</b>를 누르세요.</p>
+          {places.map((p) => (
+            <article key={p.id} className="card">
+              <div className="card-head">
+                <span className={`tag tag-${p.tag}`}>{p.tag}</span>
+                <h2>{p.name}</h2>
+                <p className="zh-title">{p.zh}</p>
+                <p className="muted">{p.area}</p>
+              </div>
+              <p>{p.summary}</p>
+              <ul className="tips">
+                {p.tips.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+              <CopyRow label={p.copy === p.zh ? "검색어" : "주소"} text={p.copy} onCopy={onCopy} />
+              <a className="btn wide" href={amapUrl(p.copy)} target="_blank" rel="noreferrer">고덕에서 열기</a>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {tab === "맛집" && (
+        <section className="list">
+          <p className="hint">
+            호텔 기준 중산로·팔시시장이 걸어서 10분 거리예요. <b>★</b>는 우선 추천. 가격은 후기 기준 참고값이에요.
+            실시간 평점은 <b>평점 보기</b>(다중뎬핑)나 고덕에서 확인하세요.
+          </p>
+          <div className="chips">
+            {GROUPS.map((g) => (
+              <button key={g} type="button" className={g === group ? "chip active" : "chip"} onClick={() => setGroup(g)}>
+                {g}
+              </button>
+            ))}
+          </div>
+          {group === "미쉐린" && (
+            <p className="hint">2026 푸젠 미쉐린 가이드에 샤먼 식당 42곳이 실렸고, 그중 31곳이 가성비 식당인 빕 구르망이에요.</p>
+          )}
+          {restaurants.filter((r) => r.group === group).map((r) => (
+            <article key={r.name} className="card">
+              <div className="card-head">
+                <h2>{r.star && <span className="star">★ </span>}{r.name}</h2>
+                {r.zh && <p className="zh-title">{r.zh}</p>}
+                {(r.distance || r.price) && (
+                  <p className="muted">{[r.distance, r.price].filter(Boolean).join(" · ")}</p>
+                )}
+              </div>
+              <p><b>대표</b> {r.menu}</p>
+              {r.note && <p className="muted">{r.note}</p>}
+              {r.zh && <CopyRow label="상호" text={r.zh} onCopy={onCopy} />}
+              {r.addr && <CopyRow label="주소" text={r.addr} onCopy={onCopy} />}
+              {(r.zh || r.addr) && (
+                <div className="btn-pair">
+                  <a className="btn wide" href={amapUrl(r.zh ?? r.addr!)} target="_blank" rel="noreferrer">고덕에서 열기</a>
+                  {r.zh && (
+                    <a className="btn wide dp" href={dianpingUrl(r.zh)} target="_blank" rel="noreferrer">평점 보기 · 点评</a>
+                  )}
+                </div>
+              )}
+            </article>
+          ))}
+          <div className="card">
+            <h2>이렇게 먹는 걸 추천해요</h2>
+            {mealPlan.map((m) => (
+              <div key={m.q} className="qa">
+                <h3>{m.q}</h3>
+                <p>{m.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === "먹거리" && (
+        <section className="list">
+          <p className="hint">맵지 않고 해산물 감칠맛이 강한 민남(闽南) 음식이에요. 중국어 이름을 가게에 보여주면 주문이 쉬워요.</p>
+          {foods.map((f) => (
+            <article key={f.zh} className="card food">
+              <div className="food-head">
+                <h2>{f.name}</h2>
+                <button type="button" className="zh-big" onClick={() => onCopy(f.zh)}>{f.zh}</button>
+              </div>
+              <p>{f.desc}</p>
+              {f.where && <p className="muted">📍 {f.where}</p>}
+            </article>
+          ))}
+        </section>
+      )}
+
+      {tab === "지리" && (
+        <section className="list">
+          {geography.map((g) => (
+            <article key={g.q} className="card qa">
+              <h2>{g.q}</h2>
+              <p>{g.a}</p>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {tab === "꿀팁" && (
+        <section className="list">
+          {tips.map((g) => (
+            <article key={g.q} className="card qa">
+              <h2>{g.q}</h2>
+              <p>{g.a}</p>
+            </article>
+          ))}
+        </section>
+      )}
+
+      <footer className="foot">예약 규칙·가격·영업시간은 바뀔 수 있어요. 출발 전 현지 앱에서 한 번 더 확인하세요.</footer>
+
+      <div className={toast ? "toast show" : "toast"} role="status">{toast}</div>
+    </main>
+  );
 }
