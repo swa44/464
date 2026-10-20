@@ -13,4 +13,5 @@ npm run dev
 
 - `app/data.ts` — 장소, 맛집, 먹거리, 지리 Q&A, 팁 데이터 (내용 수정은 여기서)
 - `app/page.tsx` — 탭 화면, 복사 버튼, 고덕 링크
+- `app/MapTab.tsx` — 지도 탭: 맛집 위치 핀, 내 위치, 가까운 순 목록 (좌표는 `data.ts`의 `pos`)
 - `public/sw.js` — 오프라인에서도 마지막으로 본 화면 유지

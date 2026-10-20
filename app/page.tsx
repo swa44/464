@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { amapUrl } from "./amap";
 import { foods, geography, mealPlan, places, restaurants, tips, type Restaurant } from "./data";
 
-const TABS = ["장소", "맛집", "먹거리", "지리", "꿀팁"] as const;
+// Leaflet은 window가 필요해서 브라우저에서만 불러온다.
+const MapTab = dynamic(() => import("./MapTab"), { ssr: false });
+
+const TABS = ["장소", "맛집", "지도", "먹거리", "지리", "꿀팁"] as const;
 type Tab = (typeof TABS)[number];
 const GROUPS: Restaurant["group"][] = ["해산물", "전통음식", "팔시 간식", "구랑위", "미쉐린"];
 
-// 350200 = 샤먼 행정코드. callnative=1이면 고덕 앱이 설치돼 있을 때 앱으로 연다.
-function amapUrl(keyword: string) {
-  return `https://uri.amap.com/search?keyword=${encodeURIComponent(keyword)}&city=350200&callnative=1`;
-}
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -160,6 +161,8 @@ export default function Page() {
           </div>
         </section>
       )}
+
+      {tab === "지도" && <MapTab />}
 
       {tab === "먹거리" && (
         <section className="list">
